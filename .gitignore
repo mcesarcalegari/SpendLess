@@ -14,3 +14,6 @@
 .cxx
 local.properties
 Scratchpad/
+
+# Shared Claude Code skills/agents repo (cloned separately, see README.md)
+/.claude/.agents/
