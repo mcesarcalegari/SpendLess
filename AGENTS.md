@@ -22,7 +22,7 @@ Build **SpendLess**, a personal Android app for tracking income and expenses wit
 
 ## 3. Constraints — when to invoke which skill
 
-Skills are stored in `~/.claude/skills/<name>/SKILL.md` and loaded on demand via the `Skill` tool (Claude Code) or the equivalent in your runtime. **Never use the `Read` tool on a skill file** — invoke the skill so its instructions are properly loaded. Match the situation below to its skill and load the skill **before** writing code.
+Skills live in the shared Skills repo at `.claude/.agents/Skills/` and are symlinked into `.claude/skills/<name>/SKILL.md` by `.claude/scripts/sync-shared-skills.sh` (run automatically on session start); they are loaded on demand via the `Skill` tool (Claude Code) or the equivalent in your runtime. **Never use the `Read` tool on a skill file** — invoke the skill so its instructions are properly loaded. Match the situation below to its skill and load the skill **before** writing code.
 
 ### Project structure & build
 
