@@ -11,7 +11,7 @@ This document defines the public API and Figma token tables for each shared comp
 - Elevation is always `0.dp`. Shadows come from `SpendLessShadows` (see §0).
 - The state layer is the Figma flat overlay. Each component sets it through `LocalRippleConfiguration` with the colour and alpha listed in its table (research R3).
 - KDoc carries `Figma:` lines for the component set and for each variant (Constitution VII).
-- Previews (Constitution VIII): one named `@Preview` per distinct state (Enabled, Pressed, Focused, Disabled, Selected, Error, Placeholder, with icon left or right, long text). Every component takes an optional `interactionSource: MutableInteractionSource? = null` so previews can show Pressed and Focused. Private sub-composables inside a component (for example the Select's list row or the segmented button's segment) get their own per-state previews too. Figma ships a light scheme only, so there are **no dark previews**.
+- Previews (Constitution VIII): one named `@Preview` per distinct state (Enabled, Pressed, Focused, Disabled, Selected, Error, Placeholder, with icon left or right, long text). Components take an optional `interactionSource: MutableInteractionSource? = null` for runtime and tests (the segmented group does not; its segments do, research R15 D12). Pressed and Focused **previews** are forced through the internal `LocalPreviewInteraction`, which draws the Figma flat state layer, because static renders cannot show interaction-driven states (research R15 D10). Private sub-composables inside a component (for example the Select's list row or the segmented button's segment) get their own per-state previews too. Figma ships a light scheme only, so there are **no dark previews**.
 - "`@x%`" means `color.copy(alpha = x/100)`.
 
 Figma base URL: `https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=`
@@ -274,6 +274,6 @@ Base: M3 `TopAppBar` with `colors = transparent`, `windowInsets = WindowInsets(0
 | Token | Value |
 |---|---|
 | Height | 64dp |
-| Padding | with nav icon: h 4dp; title only: start 16dp, end 4dp; vertical 8dp |
+| Padding | with nav icon: h 4dp, title at 52dp (offset −4dp against the M3 title-slot padding, research R15 D11); title only: start 16dp, end 4dp; vertical 8dp |
 | Title | `titleLarge`, `onSurface` |
 | Icon button | 48dp touch, **40dp circular** state layer, icon 24dp `onSurface` |

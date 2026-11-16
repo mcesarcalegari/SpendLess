@@ -92,7 +92,7 @@ object RecurrenceSchedule {
 
 ## `:feature:transactions:data`
 
-- `RoomTransactionDataSource(dao: TransactionDao) : TransactionLocalDataSource`. It catches `SQLiteFullException` → `DISK_FULL` and other `SQLiteException` → `UNKNOWN`, and nothing leaks upward.
+- `RoomTransactionDataSource(dao: TransactionDao) : TransactionLocalDataSource`. It catches `SQLiteFullException` → `DISK_FULL` and other `SQLiteException` → `UNKNOWN`, and nothing leaks upward. The read flows (`observeTransactions`, `observeRunningSeriesIds`) have no error channel, so a `SQLiteException` **ends** the flow instead of reaching the collector; cancellation and non-storage exceptions pass through. On a storage failure the list therefore stops updating rather than crashing.
 - Mappers: `TransactionEntity.toTransaction()`, `Transaction.toEntity()`, `RecurringSeriesEntity.toRecurringSeries()`.
 
 ## `:core:database`

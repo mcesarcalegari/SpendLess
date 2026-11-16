@@ -321,3 +321,15 @@ At the owner's request, every design-system node on page `0:1` was refetched wit
 | D7 | Select press feedback | No state layer is drawn for the anchor or the rows; "Focused" only means the list is open | **Owner decision 2026-11-16: no press feedback** (`indication = null`) |
 | D8 | Select-list scrollbar | `showScroll` is a property; the 5-row repeat list (`2415:7969`) shows a static 100dp thumb even though it cannot scroll | **Owner decision 2026-11-16: show the thumb only when the list can scroll**; the fixed 100dp thumb moves with the scroll position |
 | D9 | Select, Text type | Anchor and rows show the symbol (`labelMedium`, `onSurface`) followed by supporting text (`bodyMedium`, `onSurfaceVariant`) | The anchor shows `selectedText` plus the selected option's `supportingText` |
+| D10 | Pressed / Focused previews | A static preview render captures one frame before any coroutine runs, so a state driven through `interactionSource` (the M3 ripple, or any collector) never appears; verified on the Button | **Owner decision 2026-11-16:** runtime keeps the M3 ripple via `LocalRippleConfiguration` and the public `interactionSource`. Previews force the state through an internal `LocalPreviewInteraction`, and each component draws the Figma flat state layer (colour, alpha, shape) for it. Not reachable from feature modules |
+| D11 | Top app bar with a nav icon | Title starts at 52dp (4dp padding + 48dp icon) in `2417:12066`; M3 adds a further 4dp title-slot padding (measured 56dp) | Title offset by −4dp when a nav icon is present; re-measured at 52.6dp |
+| D12 | Segmented button group | Figma has no group-level interaction state | The public composable takes no `interactionSource`; each segment carries the state |
+
+**Choices not drawn in Figma** (each is recorded so the owner can veto it):
+
+- Top-bar icon button pressed colour: `onSurface`@12%, the M3 kit rule for standard icon buttons (state layer = icon colour at 12%). The kit master `406:2443` is unreachable, and the screen instances show no pressed state.
+- Scrollbar travel (D8): Figma gives only the thumb's top position (14dp inset). The thumb travels linearly between a 14dp top and a 14dp bottom inset.
+- Single-line labels: Figma marks button, segment, Select and title text `nowrap`. Overflowing text ends in an ellipsis rather than being clipped.
+- Select list position: always 4dp below the anchor, never flipped above. Figma shows no other placement.
+- `SpendLessNavHost` has no `@Preview`: it emits no UI of its own, and the Roots it hosts need Koin, which previews must not use. This is treated like the Root exemption of Constitution VIII and needs owner confirmation.
+- Read flows (`observeTransactions`, `observeRunningSeriesIds`) end on a storage failure instead of throwing, because a `Flow` has no error channel (contracts/domain-interfaces.md).
