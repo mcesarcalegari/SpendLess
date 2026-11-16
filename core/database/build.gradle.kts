@@ -12,3 +12,9 @@ dependencies {
     implementation(libs.sqlcipher.android)
     implementation(libs.androidx.sqlite.ktx)
 }
+
+dependencies {
+    androidTestImplementation(libs.assertk)
+    androidTestImplementation(libs.turbine)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+}

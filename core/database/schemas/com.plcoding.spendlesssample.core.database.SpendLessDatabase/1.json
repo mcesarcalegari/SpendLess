@@ -1,0 +1,183 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "b24036e74c6a19248bc5e9740c843de2",
+    "entities": [
+      {
+        "tableName": "transactions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT NOT NULL, `counterparty` TEXT NOT NULL, `amount_minor` INTEGER NOT NULL, `note` TEXT, `category` TEXT, `repeat` TEXT NOT NULL, `recorded_at_epoch_ms` INTEGER NOT NULL, `zone_id` TEXT NOT NULL, `series_id` INTEGER, `occurrence_date_epoch_day` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "counterparty",
+            "columnName": "counterparty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountMinor",
+            "columnName": "amount_minor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "repeat",
+            "columnName": "repeat",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAtEpochMs",
+            "columnName": "recorded_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneId",
+            "columnName": "zone_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "series_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "occurrenceDateEpochDay",
+            "columnName": "occurrence_date_epoch_day",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_transactions_recorded_at_epoch_ms",
+            "unique": false,
+            "columnNames": [
+              "recorded_at_epoch_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_transactions_recorded_at_epoch_ms` ON `${TABLE_NAME}` (`recorded_at_epoch_ms`)"
+          },
+          {
+            "name": "index_transactions_series_id",
+            "unique": false,
+            "columnNames": [
+              "series_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_transactions_series_id` ON `${TABLE_NAME}` (`series_id`)"
+          },
+          {
+            "name": "index_transactions_series_id_occurrence_date_epoch_day",
+            "unique": true,
+            "columnNames": [
+              "series_id",
+              "occurrence_date_epoch_day"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_transactions_series_id_occurrence_date_epoch_day` ON `${TABLE_NAME}` (`series_id`, `occurrence_date_epoch_day`)"
+          }
+        ]
+      },
+      {
+        "tableName": "recurring_series",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`series_id` INTEGER NOT NULL, `frequency` TEXT NOT NULL, `anchor_epoch_day` INTEGER NOT NULL, `anchor_seconds_of_day` INTEGER NOT NULL, `zone_id` TEXT NOT NULL, `stopped_on_epoch_day` INTEGER, `last_materialized_epoch_day` INTEGER NOT NULL, PRIMARY KEY(`series_id`), FOREIGN KEY(`series_id`) REFERENCES `transactions`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "seriesId",
+            "columnName": "series_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "frequency",
+            "columnName": "frequency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anchorEpochDay",
+            "columnName": "anchor_epoch_day",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anchorSecondsOfDay",
+            "columnName": "anchor_seconds_of_day",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneId",
+            "columnName": "zone_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stoppedOnEpochDay",
+            "columnName": "stopped_on_epoch_day",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastMaterializedEpochDay",
+            "columnName": "last_materialized_epoch_day",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "series_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "transactions",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "series_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b24036e74c6a19248bc5e9740c843de2')"
+    ]
+  }
+}
