@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             content {
@@ -22,6 +23,16 @@ dependencyResolutionManagement {
     }
 }
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 rootProject.name = "SpendLessSample"
 include(":app")
+include(":core:domain")
+include(":core:data")
+include(":core:database")
+include(":core:presentation")
+include(":core:design-system")
+include(":feature:transactions:domain")
+include(":feature:transactions:data")
+include(":feature:transactions:presentation")
  

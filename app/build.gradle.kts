@@ -1,24 +1,16 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.convention.android.application)
+    alias(libs.plugins.convention.compose)
+    alias(libs.plugins.convention.koin)
 }
 
 android {
     namespace = "com.plcoding.spendlesssample"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
 
     defaultConfig {
         applicationId = "com.plcoding.spendlesssample"
-        minSdk = 26
-        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -30,32 +22,27 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    buildFeatures {
-        compose = true
-    }
     lint {
         disable += "Instantiatable"
     }
 }
 
 dependencies {
+    implementation(projects.core.domain)
+    implementation(projects.core.data)
+    implementation(projects.core.database)
+    implementation(projects.core.presentation)
+    implementation(projects.core.designSystem)
+    implementation(projects.feature.transactions.domain)
+    implementation(projects.feature.transactions.data)
+    implementation(projects.feature.transactions.presentation)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    testImplementation(libs.junit)
+    implementation(libs.androidx.navigation.compose)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
