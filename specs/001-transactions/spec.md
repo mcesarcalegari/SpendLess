@@ -4,7 +4,9 @@
 
 **Created**: 2026-11-13
 
-**Status**: Draft
+**Status**: Refined
+
+**Refined**: 2026-11-16 — Amount entry uses the phone's own system keyboard in decimal-number mode; no custom numeric keypad is built for the Create sheet (or any future Edit sheet).
 
 **Input**: User description: "We are building a transactions feature for a finance tracking app, which is used to help the user track their expenses and income, both as one-time expenses and as recurring expenses or recurring income. Overall they can see how their income and expenses develop and evolve over time. The transaction feature involves: a transaction list screen that lists all transactions in grouped sections for each day; a create transaction sheet, which can be used in order to create a new transaction that can, again, either be income or expense. It has a category and has a specific repeat type, which could be one time, weekly, or monthly. The exact repeat types you can read from the Figma mockups. Use these Figma mockups as the single source of truth."
 
@@ -43,7 +45,7 @@ Designer notes attached to the Create Transaction frames:
 5. **Default values.** The form opens as *Expense*, with category *Other* and repeat *Does not repeat*.
 6. **Amount rules.** The amount is required and must be a number greater than 0.00. *Create* stays disabled until it is valid. The product owner has also made the name required (see Clarifications).
 7. **Amount display follows user preferences.** Every amount follows the user's amount-format preferences: currency symbol, negative-number style (`-$10` or `($10)`), decimal separator and thousands separator. Those preferences belong to a separate feature. Until it exists, they hold fixed defaults (see FR-032 to FR-035). In the create sheet, the sign is highlighted to mark the type: an outgoing sign for expenses, an incoming sign for incomes. In the list, expense amounts use the normal text colour and are told apart only by their negative format. Income amounts are positive and highlighted as incoming.
-8. **Quick entry.** When the sheet opens, the keyboard is already up, so the user can start typing straight away.
+8. **Quick entry.** When the sheet opens, the keyboard is already up, so the user can start typing straight away. The keyboard is the phone's own system keyboard, set to decimal-number mode for the amount. It is not a custom keypad drawn inside the sheet, even where the mockups show a keyboard (see Clarifications, 2026-11-16).
 9. **No date field.** The form has no date picker. A new transaction is recorded for the current day.
 10. **Day headers.** Groups are titled "TODAY", "YESTERDAY", and then the month and day for older dates (for example "JANUARY 9", "DECEMBER 28"). The current group's header stays pinned while the user scrolls.
 11. **Screen actions.** The list screen has a back action, a title ("All Transactions"), an export/download action in the top bar (hidden until the export feature exists, see FR-009), and a floating add (+) button that opens the create sheet.
@@ -72,6 +74,9 @@ Designer notes attached to the Create Transaction frames:
 
 - Q: How is a transaction's note shown after it is created? → A: In the list, the row expands in place when the user taps its note badge, showing the full note (frame `2414:5142`). Tapping the badge again collapses it.
 - Q: Which amount-format preferences does this feature follow? → A: All of them: the currency symbol, the negative-number style, the decimal separator and the thousands separator. Editing them is out of scope. This feature reads them from one shared place, which holds fixed defaults until the preferences feature exists.
+### Session 2026-11-16 (refinement)
+
+- Q: Must the Create Transaction sheet (or an Edit Transaction sheet) have its own custom numeric keypad for the amount? → A: No. The amount uses the phone's own system keyboard, locked to decimal-number mode, so only digits and a decimal separator can be typed on it. No custom keypad is built. The Receiver/Sender name and the note keep the normal text keyboard. Editing transactions is still out of scope; if an Edit sheet is added later, it follows the same rule.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -255,6 +260,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 - **FR-019**: The sheet MUST provide a repeat field, defaulting to *Does not repeat*, with exactly these options: *Does not repeat*, *Daily*, *Weekly on [weekday]*, *Monthly on the [ordinal day]*, *Yearly on [abbreviated month] [ordinal day]*. The weekday, day and date come from the transaction's date and are always written in English (for example "Monthly on the 22nd").
 - **FR-020**: After a repeat option is chosen, the field MUST show the short frequency name (*Does not repeat*, *Daily*, *Weekly*, *Monthly*, *Yearly*).
 - **FR-021**: When the sheet opens, the keyboard MUST already be shown and ready for input, with no extra tap.
+- **FR-021a**: The amount field MUST use the phone's own system keyboard in decimal-number mode, which offers only digits and a decimal separator. The sheet MUST NOT include a custom numeric keypad. Any character the system keyboard still lets through is filtered as FR-013 and the edge cases describe. The name and note fields use the normal system text keyboard.
 - **FR-022**: Tapping *Create* with valid input MUST save the transaction dated today, close the sheet, and return the user to the list.
 - **FR-023**: Tapping the close (✕) control MUST close the sheet without saving anything.
 - **FR-022a**: If saving fails, the sheet MUST stay open with all input kept and show a message under *Create* saying the transaction was not saved (see Edge Cases). Nothing is recorded.
@@ -333,6 +339,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 - **What toggles the note**: the user named the note badge as the control, so only tapping the badge expands or collapses a row. Tapping anywhere else on the row does nothing.
 - **Hidden date in the row-state frame**: frame `2414:5142` contains a hidden date text (`12.01.2025`) next to the amount. Because it is hidden in Figma, it is not shown. The day group header already gives the date.
 - **Keyboard focus**: the mockups show the numeric keyboard on open, so the amount field is assumed to have focus when the sheet opens. Tapping the name or the note moves focus there.
+- **System keyboard, not a custom keypad**: the keyboard shown in the mockups is the phone's own system keyboard, not a keypad the app draws (refinement on 2026-11-16). For the amount, it is set to decimal-number mode. Its exact look depends on the phone's keyboard app, so it is not checked against the mockups. Some keyboard apps don't offer `,` in this mode. With the default `.` separator this changes nothing, but the future preferences feature must take it into account.
 - **Empty list state**: no empty-state design is in this frame set, so an empty history shows an empty list under the title bar with the add button available. A dedicated empty-state design can be added later from Figma.
 - **Dev note vs. mockup**: the empty-form mockups draw *Create* in its normal colour, but the designer note says it is disabled until an amount is entered. The note is treated as the rule, and the disabled state uses the design system's standard disabled look. The product owner also made the name required (clarification on 2026-11-13), which goes beyond the note.
 - **The list behind the create sheet is outdated**: the list drawn behind the create sheet frames is an older version ("8 JAN" / "31 DEC" headers, notes as row subtitles). The dedicated *All Transactions* frames (`2417:12042`, `2417:12068`) are the authoritative list design.

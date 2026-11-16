@@ -4,6 +4,8 @@
 
 **Input**: Feature specification from `/specs/001-transactions/spec.md`
 
+**Propagated**: 2026-11-16 — Updated from spec.md refinement (FR-021a: amount uses the system keyboard in decimal-number mode; no custom numeric keypad)
+
 ## Summary
 
 This plan delivers the **All Transactions** list and the **Create Transaction** bottom sheet:
@@ -219,7 +221,7 @@ feature/transactions/presentation/src/main/kotlin/.../transactions/presentation/
 
 ## Risks
 
-- **Decimal separator vs. IME**: `,` may be missing from some numeric keyboards. This is irrelevant with the default `.`, but matters for the future preferences feature (R8).
+- **Decimal separator vs. IME**: the amount relies on the phone's own system keyboard in decimal-number mode (`KeyboardType.Decimal`). No custom keypad is built (FR-021a). `,` may be missing from some numeric keyboards. This is irrelevant with the default `.`, but matters for the future preferences feature (R8). The keyboard's look comes from the user's keyboard app, so it is left out of Figma comparisons.
 - **Compose BOM bump** may change the behaviour of existing M3 defaults. This is mitigated because every DS component overrides its visuals explicitly.
 - **Emoji rendering** varies by device font (Noto Color Emoji vs. OEM fonts). It is accepted, since Figma uses emoji text, not assets.
 - **Midnight trigger**: `ACTION_DATE_CHANGED` can be late on some OEMs. Mitigated by the clock-based timer merged into the same flow (R10).
