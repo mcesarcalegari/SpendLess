@@ -284,3 +284,40 @@ Both are `internal` to `:feature:transactions:presentation`, and each KDoc state
 | F7 | Select focused state | Arrow stays `arrow_drop_down` while open (`2415:10169`) even though `icon/arrow_drop_up` exists | Follow the node: no arrow flip. |
 | F8 | Export icon | Present in the list top bar | Hidden until the export feature ships (FR-009). |
 | F9 | Expanded row amount | The expanded card's inner `pr 4dp` places the amount 4dp further in than in the collapsed row (`2414:5066` vs `2414:5064`) | Follow the node values. The 4dp shift is Figma-sourced, and verification should expect it. |
+
+---
+
+## R15. Design-system refetch before implementation (2026-11-16)
+
+At the owner's request, every design-system node on page `0:1` was refetched with `get_design_context` (MCP session `a61810af-efd7-4751-83a3-96fa87153e89`) before any component code was written. The contract tables were then diffed against the live data, and [contracts/design-system-components.md](./contracts/design-system-components.md) was corrected where it was wrong or incomplete.
+
+| Node | What | Result |
+|---|---|---|
+| `0:1` | Components page | `get_metadata` OK. Every node id in the contract exists |
+| `1:732` | Colour scheme | `get_variable_defs` OK. Every `Schemes/*` value equals `Color.kt` |
+| `2416:30065` | Typography | `get_variable_defs` OK. Every `material-theme/*` style equals `Type.kt` |
+| `406:110` | Button (24 variants) | OK. Matches the contract on every token |
+| `406:3390` | Icon button (14 variants) | OK. One gap (D1) |
+| `410:2338` | FAB | OK. One note (D2) |
+| `406:5441`, `406:5462` | Segmented button + building blocks | OK. One correction (D3) |
+| `2417:12817` | Segmented button instance in the Create sheet | OK. Confirms the icon + label configuration |
+| `407:1793` | Text field (8 variants) | OK. Gaps D4–D6 |
+| `2415:10171`, `2415:10118`, `2415:10072` | Select, Select-list, list-item | OK. Gaps D7–D9 |
+| `2415:11244`, `2415:11280` | Repeat Select instances (closed / open) | OK. Confirm `tertiaryContainer` tile and 52dp `TextIndented` rows |
+| `2417:12066`, `2415:6632` | Top app bar instances | OK. Match R6 |
+| `406:2552`, `406:2443` | Kit Top app bar / Icon button masters | **Still rejected** ("invalid node selection"). The owner-approved instance exception (R6, F5) stays in force |
+| 8 icon symbols (R5) | `get_design_context` + SVG export | OK. Every SVG is a 24×24 viewBox with the glyph in frame coordinates |
+
+**Differences found and how they are resolved** (Figma wins over the earlier contract text):
+
+| # | Component | Live Figma | Resolution |
+|---|---|---|---|
+| D1 | Icon button, Standard Disabled | The icon is `onSurface` (not `onSurfaceVariant`), with the whole button at 38% | Implement as fetched |
+| D2 | FAB Pressed | A frozen ripple frame: a full `onSecondaryContainer`@8% layer plus a 12% ripple wave | The Compose ripple with pressed alpha 0.12 is the animated equivalent. No static 8% layer is faked |
+| D3 | Segmented segment | Track 48 with 4dp vertical padding leaves a **40dp** segment. The `py 10` content (44dp) is centred and clipped inside it | Segment = 40dp tall, content centred, horizontal padding 12. The 10dp vertical padding is not applied |
+| D4 | Text field caret | `primary` when Focused, **`error`** in the Error state | Cursor brush follows the state |
+| D5 | Text field trailing icon | `ArrowDropDown` 20dp in **`onSurfaceVariant`** | Implement as fetched |
+| D6 | Text field Disabled | The field background stays a solid `surfaceContainerLowest`; the border and content layer are at 38%; label and supporting text at 38%; input and placeholder text are `onSurface` | Implement as fetched |
+| D7 | Select press feedback | No state layer is drawn for the anchor or the rows; "Focused" only means the list is open | **Owner decision 2026-11-16: no press feedback** (`indication = null`) |
+| D8 | Select-list scrollbar | `showScroll` is a property; the 5-row repeat list (`2415:7969`) shows a static 100dp thumb even though it cannot scroll | **Owner decision 2026-11-16: show the thumb only when the list can scroll**; the fixed 100dp thumb moves with the scroll position |
+| D9 | Select, Text type | Anchor and rows show the symbol (`labelMedium`, `onSurface`) followed by supporting text (`bodyMedium`, `onSurfaceVariant`) | The anchor shows `selectedText` plus the selected option's `supportingText` |

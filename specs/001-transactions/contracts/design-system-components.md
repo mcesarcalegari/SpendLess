@@ -94,7 +94,7 @@ The outer box is 48dp with 2dp padding, so the container is **44dp** with radius
 | Style | Container | Icon | State layer (pressed/focused) | Disabled |
 |---|---|---|---|---|
 | Filled | `primary` | `onPrimary` | `onPrimary`@12% | container `onSurface`@12%, icon `onSurface`@38% |
-| Standard | none | `onSurfaceVariant` | `onSurfaceVariant`@12% | whole button 38% opacity |
+| Standard | none | `onSurfaceVariant` | `onSurfaceVariant`@12% | icon `onSurface`, whole button 38% opacity (research R15 D1) |
 | Error | `error`@8% | `error` | `error`@12% | — (no Figma variant, so `enabled` is ignored visually) |
 | OnPrimary | `onPrimary`@12% | `onPrimary` | `onPrimary`@12% | — |
 
@@ -124,7 +124,7 @@ Base: M3 `FloatingActionButton` with `elevation = FloatingActionButtonDefaults.e
 | Content | `onSecondaryContainer` |
 | Icon | 28dp (padding 16dp) |
 | Shadow | `SpendLessShadows.fab` |
-| State layer | `onSecondaryContainer`@12% |
+| State layer | `onSecondaryContainer`@12% (Figma Pressed is a frozen ripple frame; research R15 D2) |
 
 ---
 
@@ -150,10 +150,10 @@ Base: `Row(Modifier.selectableGroup())` containing an M3 `Surface(selected = …
 | Token | Value |
 |---|---|
 | Track | height 48dp, radius 16dp, colour `primaryContainer`@8%, horizontal padding 4dp |
-| Segment | `weight(1f)`, vertical padding 4dp, inner shape radius **12dp** |
+| Segment | `weight(1f)`, vertical padding 4dp, so the inner container is **40dp** tall with radius **12dp** |
 | Selected segment | container `surfaceContainerLowest`; label and icon `primary` |
 | Unselected segment | container transparent; label and icon `onPrimaryFixed`@70% |
-| Content | h-padding 12dp, v-padding 10dp, icon 18dp, gap **6dp** |
+| Content | h-padding 12dp, centred vertically in the 40dp container (Figma `py 10` is clipped, research R15 D3), icon 18dp before the label, gap **6dp** |
 | Label | `titleMedium` |
 | State layer | `primaryContainer`@8% |
 | Semantics | `Role.Tab`, `selected` |
@@ -191,11 +191,11 @@ Base: `BasicTextField` + `decorationBox`. `OutlinedTextField` was rejected (rese
 | Field | height 48dp, radius 16dp, background `surfaceContainerLowest`, border 1dp |
 | Border | Enabled `outline` · Focused `primary` · Error `error` · Disabled `outline` with the whole field at 38% |
 | Content padding | start 16dp, end 12dp, vertical 4dp; trailing gap 4dp |
-| Input | `bodyMedium` (Regular 16/24), `onSurface`; cursor `primary` |
+| Input | `bodyMedium` (Regular 16/24), `onSurface`; cursor `primary`, `error` in the Error state (research R15 D4) |
 | Placeholder | `bodyMedium`, `onSurfaceVariant` (70% while focused); `onSurface` when disabled |
-| Trailing icon | `ArrowDropDown`, 20dp (`showDropDownIcon`) |
+| Trailing icon | `ArrowDropDown`, 20dp, `onSurfaceVariant` (`showDropDownIcon`, research R15 D5) |
 | Supporting | `bodySmall` (Regular 14/20): `onSurfaceVariant` · Error `error` · Disabled `onSurface`@38% |
-| Disabled | label, field and supporting at 38% opacity |
+| Disabled | label and supporting at 38%; the field keeps a solid `surfaceContainerLowest` background while its border and content are at 38%; text `onSurface` (research R15 D6) |
 
 ---
 
@@ -225,6 +225,7 @@ fun <T> SpendLessSelect(
     fieldLeadingEmoji: String? = null,
     leadingTileColor: Color = MaterialTheme.colorScheme.primaryFixed,
     listItemStyle: SelectListItemStyle = SelectListItemStyle.Icon, // Icon | Text | TextIndented
+    interactionSource: MutableInteractionSource? = null,
 )
 ```
 
@@ -236,7 +237,7 @@ Base for the anchor: M3 `Surface(onClick)`. Base for the list: `Popup` + custom 
 | Anchor padding | Icon type: start 4dp; Text type: start 16dp. End 12dp, gap 8dp |
 | Leading tile | 40dp, radius 12dp, `leadingTileColor` (category `primaryFixed`, repeat `tertiaryContainer`), emoji in `titleLarge` centred |
 | Field text | `labelMedium` (Medium 16/24), `onSurface`, `weight(1f)` |
-| Supporting (Text type) | `bodyMedium`, `onSurfaceVariant` |
+| Supporting (Text type) | `bodyMedium`, `onSurfaceVariant`, after the symbol in the anchor and in rows (research R15 D9) |
 | Trailing | `ArrowDropDown` 24dp `onSurface`. It does **not** flip while open (F7) |
 | List position | 4dp below the anchor (`top = 52`), same width as the anchor |
 | List surface | `surfaceContainerLowest`, radius 16dp, shadow `select`, no vertical padding |
@@ -244,7 +245,8 @@ Base for the anchor: M3 `Surface(onClick)`. Base for the list: `Popup` + custom 
 | Row text | `labelMedium`, `onSurface` |
 | Selected marker | `Check` 24dp `primary`, end 12dp, vertically centred |
 | Max visible | 5 rows (240dp), then scroll |
-| Scrollbar | 4dp wide, height 100dp, `onSurface`@12%, fully rounded, 2dp from the end edge, top inset 14dp |
+| Press feedback | None on the anchor or rows (Figma draws no state layer; owner decision, research R15 D7) |
+| Scrollbar | 4dp wide, height 100dp, `onSurface`@12%, fully rounded, 2dp from the end edge, top inset 14dp. Shown only when the list can scroll, and moves with the scroll position (owner decision, research R15 D8) |
 | Dismiss | outside tap, or picking an item calls `onExpandedChange(false)` |
 | Semantics | Anchor `Role.DropdownList`; rows `selected` |
 
