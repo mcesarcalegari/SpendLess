@@ -1,19 +1,19 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.2.0 → 1.3.0
-Bump rationale: MINOR — a new principle (VIII) is added. No principle is removed or redefined.
+Version change: 1.3.0 → 1.3.1
+Bump rationale: PATCH — wording clarification. Principle II now names the dedicated
+`:core:design-system` module instead of "`:core:presentation` / the design-system package it
+hosts". The rule itself (reuse the shared design system first) is unchanged.
 
-Modified principles: none
-Added principles:
-- VIII. A Preview for Every Composable, One per Distinct State
-Modified sections:
-- Principle VI: the `android-compose-components` bullet now points to Principle VIII
-- Development Workflow & Quality Gates: Constitution Check gains item 8 (previews per state)
-- Governance: compliance review now covers Principles I–VIII
+Modified principles:
+- II. Design-System Reuse First (module name clarified; no change in meaning)
+Added sections: none
 Removed sections: none
 
 Previous amendments:
+- 1.3.0 (2026-11-16): added Principle VIII (a preview for every composable, one per distinct
+  state), Constitution Check item 8, and review coverage for I–VIII.
 - 1.2.0 (2026-11-13): Principle I expanded with a mandatory order for Figma MCP calls.
 - 1.1.0 (2026-11-13): added Principle VII (Figma Node Links on Every Designed Composable),
   item 7 in the Constitution Check, and review coverage for I–VII.
@@ -21,17 +21,13 @@ Previous amendments:
   Development Workflow & Quality Gates were defined.
 
 Templates requiring updates:
-- ✅ .specify/templates/plan-template.md — not modified (it reads the constitution at runtime;
-  its "Constitution Check" gate picks up Principle VIII automatically)
-- ✅ .specify/templates/spec-template.md — not modified (previews are a "how" concern, not spec)
-- ✅ .specify/templates/tasks-template.md — not modified (it reads the constitution at runtime)
+- ✅ .specify/templates/plan-template.md — not modified (reads the constitution at runtime)
+- ✅ .specify/templates/spec-template.md — not modified (module names are not spec content)
+- ✅ .specify/templates/tasks-template.md — not modified (reads the constitution at runtime)
 
-Propagated to feature artifacts (at the owner's request):
-- ✅ specs/001-transactions/plan.md — Constitution Check row 8
-- ✅ specs/001-transactions/tasks.md — global rule, per-state previews on every composable task,
-  new preview audit task
-- ✅ specs/001-transactions/contracts/transactions-ui.md — preview lists per composable
-- ✅ specs/001-transactions/contracts/design-system-components.md — preview rule points to VIII
+Consistency:
+- ✅ specs/001-transactions/plan.md already places the design system in `:core:design-system`
+  (resolves /speckit-analyze finding H3).
 
 Follow-up TODOs:
 - AGENTS.md §6 still names Figma fileKey `ftCIcpiLxrMhckuzDmYQWL`. This constitution names
@@ -88,7 +84,7 @@ component structure, so building from one is guessing. The structured hierarchy 
 ### II. Design-System Reuse First
 
 - Every UI component MUST first be built from existing components and tokens in the shared
-  design-system module (`:core:presentation` / the design-system package it hosts).
+  design-system module (`:core:design-system`).
 - Before writing a new composable, agents MUST search the design-system module for a component
   that matches the Figma element and reuse or parameterize it.
 - A new component MAY be created only when no existing one fits. Then:
@@ -382,4 +378,4 @@ These are carried over from `AGENTS.md`, which remains the operating manual.
   generated, and every review MUST verify Principles I–VIII. Any deviation MUST be justified in
   the plan's Complexity Tracking section and approved by the project owner.
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-16
+**Version**: 1.3.1 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-16
