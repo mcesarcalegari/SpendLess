@@ -1,18 +1,20 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.1.0 → 1.2.0
-Bump rationale: MINOR — Principle I is materially expanded with a mandatory order for Figma
-MCP calls (structured design context first, screenshots secondary only). No principle is
-removed or redefined in a backward-incompatible way.
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR — a new principle (VIII) is added. No principle is removed or redefined.
 
-Modified principles:
-- I. Figma Is the Single Source of Truth — adds the order of Figma MCP calls, bans reading
-  values from screenshots, and bans screenshots as a fallback for failed structured calls
-Added principles: none
+Modified principles: none
+Added principles:
+- VIII. A Preview for Every Composable, One per Distinct State
+Modified sections:
+- Principle VI: the `android-compose-components` bullet now points to Principle VIII
+- Development Workflow & Quality Gates: Constitution Check gains item 8 (previews per state)
+- Governance: compliance review now covers Principles I–VIII
 Removed sections: none
 
 Previous amendments:
+- 1.2.0 (2026-11-13): Principle I expanded with a mandatory order for Figma MCP calls.
 - 1.1.0 (2026-11-13): added Principle VII (Figma Node Links on Every Designed Composable),
   item 7 in the Constitution Check, and review coverage for I–VII.
 - 1.0.0 (2026-11-13): first ratification. Principles I–VI, Additional Constraints, and
@@ -20,13 +22,21 @@ Previous amendments:
 
 Templates requiring updates:
 - ✅ .specify/templates/plan-template.md — not modified (it reads the constitution at runtime;
-  its "Constitution Check" gate picks up Principles I–VII automatically)
-- ✅ .specify/templates/spec-template.md — not modified (it reads the constitution at runtime)
+  its "Constitution Check" gate picks up Principle VIII automatically)
+- ✅ .specify/templates/spec-template.md — not modified (previews are a "how" concern, not spec)
 - ✅ .specify/templates/tasks-template.md — not modified (it reads the constitution at runtime)
+
+Propagated to feature artifacts (at the owner's request):
+- ✅ specs/001-transactions/plan.md — Constitution Check row 8
+- ✅ specs/001-transactions/tasks.md — global rule, per-state previews on every composable task,
+  new preview audit task
+- ✅ specs/001-transactions/contracts/transactions-ui.md — preview lists per composable
+- ✅ specs/001-transactions/contracts/design-system-components.md — preview rule points to VIII
 
 Follow-up TODOs:
 - AGENTS.md §6 still names Figma fileKey `ftCIcpiLxrMhckuzDmYQWL`. This constitution names
-  `xSFwRCFwe13SK2kAq85SLj` (the user-supplied source). Update AGENTS.md so both agree.
+  `xSFwRCFwe13SK2kAq85SLj` (the user-supplied source). Update AGENTS.md so both agree
+  (tracked as task T135 in specs/001-transactions/tasks.md).
 - No deferred placeholders.
 -->
 
@@ -177,7 +187,7 @@ win.
   lazy-layout performance, and deferred reads.
 - [`android-compose-components`](../../.claude/skills/android-compose-components/SKILL.md): when
   writing any composable that is not a Root/Screen. Covers design-system reuse (Principle II),
-  previews per state, icon objects, and slot APIs.
+  previews per state (Principle VIII), icon objects, and slot APIs.
 - [`compose-adaptive-layouts`](../../.claude/skills/compose-adaptive-layouts/SKILL.md): rarely
   needed under Principle IV. Consult it only to confirm that a requirement is plain responsive
   sizing within portrait phones, or if a future amendment brings back other form factors. It
@@ -281,6 +291,47 @@ Rationale: A node link on each composable makes reviews instant. It lets the ver
 target the exact frame, and it means future agents can pull the design data straight from Figma
 without searching the file, which lowers the temptation to improvise.
 
+### VIII. A Preview for Every Composable, One per Distinct State
+
+Every composable function that is written or changed MUST have at least one `@Preview`. This
+applies equally to Screen composables, design-system components, feature components, and the
+private sub-composables a screen or component is split into.
+
+- **One preview per distinct state.** When a composable can render in more than one distinct
+  state, it MUST have one preview for each of them, so that every state can be checked at a
+  glance without running the app. A state is distinct when it looks different on screen. Typical
+  states are:
+  - content states: empty, populated with data, loading, error;
+  - interaction states: enabled, disabled, pressed, focused, selected, expanded, collapsed;
+  - input states: placeholder, typing, filled, invalid;
+  - variants: each style or type the composable supports (for example expense vs. income);
+  - stress cases the spec names: very long text, maximum values, overflow.
+- **Coverage follows the composable, not only the screen.** A screen's previews do not count as
+  previews for the sub-composables it contains. Each sub-composable with several distinct states
+  gets its own per-state previews.
+- **How previews are written:**
+  - Each preview is a separate `@Preview` function named after the state it shows (for example
+    `TransactionListScreenEmptyPreview`, `SpendLessButtonDisabledPreview`).
+    `@PreviewParameter` MAY be used if each state still renders as its own named preview entry.
+  - Previews are wrapped in the app theme and use fixed sample data. They MUST NOT depend on a
+    ViewModel, Koin, the database, the network, or the system clock.
+  - If a state can't be reached through parameters alone (for example pressed or focused), the
+    composable MUST expose a way to drive it in previews, such as an `interactionSource`
+    parameter, rather than leaving the state without a preview.
+  - Previews are light-scheme and portrait-phone only (Principle IV; Figma ships one scheme).
+  - If the state has its own Figma frame, its preview links that frame (Principle VII).
+- **Exempt:**
+  - Root composables that only obtain a ViewModel and forward state. Their Screen composable
+    carries the previews.
+  - Composable functions that emit no UI, such as effect helpers (`ObserveAsEvents`),
+    `remember…` helpers, and resource accessors (icon or painter getters).
+- A missing preview, or a distinct state without its own preview, is a defect. It is fixed in the
+  same change that adds or touches the composable.
+
+Rationale: Per-state previews make a UI reviewable at a glance. They expose states that a manual
+run rarely reaches (error, disabled, overflow). They are also what `android-preview-figma-verify`
+compares against Figma without a device, so a missing preview is a state that is never checked.
+
 ## Additional Constraints
 
 These are carried over from `AGENTS.md`, which remains the operating manual.
@@ -309,7 +360,8 @@ These are carried over from `AGENTS.md`, which remains the operating manual.
   4. portrait-only scope (IV);
   5. a spec.md free of technology (V);
   6. the skills loaded (VI);
-  7. the Figma node URL each new or changed composable will carry in its KDoc (VII).
+  7. the Figma node URL each new or changed composable will carry in its KDoc (VII);
+  8. the previews each new or changed composable will have, one per distinct state (VIII).
 - **Definition of done:** the acceptance criteria and verification method in `AGENTS.md` §4–§5
   apply. `./gradlew build` passes, tests exist and pass, UI is verified against Figma, the
   security invariants hold, and work is committed atomically.
@@ -327,7 +379,7 @@ These are carried over from `AGENTS.md`, which remains the operating manual.
   incompatible way; MINOR for a new principle or section, or materially expanded guidance;
   PATCH for clarifications and wording.
 - **Compliance review:** every plan.md MUST pass the Constitution Check before tasks are
-  generated, and every review MUST verify Principles I–VII. Any deviation MUST be justified in
+  generated, and every review MUST verify Principles I–VIII. Any deviation MUST be justified in
   the plan's Complexity Tracking section and approved by the project owner.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 1.3.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-16
