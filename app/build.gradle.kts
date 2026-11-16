@@ -46,3 +46,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+dependencies {
+    testImplementation(testFixtures(projects.core.domain))
+    androidTestImplementation(testFixtures(projects.core.domain))
+}

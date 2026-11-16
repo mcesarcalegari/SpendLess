@@ -10,3 +10,8 @@ android {
 dependencies {
     implementation(projects.feature.transactions.domain)
 }
+
+dependencies {
+    testImplementation(testFixtures(projects.core.domain))
+    androidTestImplementation(testFixtures(projects.core.domain))
+}
