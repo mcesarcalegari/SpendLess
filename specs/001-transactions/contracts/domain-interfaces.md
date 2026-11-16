@@ -75,8 +75,8 @@ class TransactionValidator(private val clock: Clock) {
 class CreateTransaction(private val dataSource: TransactionLocalDataSource) {
     suspend operator fun invoke(transaction: Transaction): Result<Long, DataError.Local>   // FR-022; recurring → insertRecurring
 }
-class MaterializeDueOccurrences(private val dataSource: TransactionLocalDataSource, private val schedule: RecurrenceSchedule) {
-    suspend operator fun invoke(today: LocalDate): EmptyResult<DataError.Local> // FR-025, -025a, -025c; respects stoppedOn
+class MaterializeDueOccurrences(private val dataSource: TransactionLocalDataSource, private val schedule: RecurrenceSchedule, private val clock: Clock) {
+    suspend operator fun invoke(today: LocalDate): EmptyResult<DataError.Local> // FR-025, -025a, -025c; respects stoppedOn; recordedAt = min(due + anchorTime, clock.instant()) (FR-002)
 }
 class StopRecurringSeries(private val dataSource: TransactionLocalDataSource) {
     suspend operator fun invoke(seriesId: Long, today: LocalDate): EmptyResult<DataError.Local> // FR-038, -039

@@ -213,7 +213,7 @@ From `2417:12042` (row master `423:4852`) and `2414:5142`:
    - Yearly on Feb 29: Feb 28 in non-leap years.
    - Daily and weekly: anchor plus n days or n weeks.
    - The upper bound is `min(today, stoppedOn)`.
-   - The occurrence time of day is the original's local time on the due date (FR-002).
+   - The occurrence time of day is the original's local time on the due date, capped at the materialisation instant when that is earlier (FR-002, amended 2026-11-16). `MaterializeDueOccurrences` therefore takes the injected `Clock`.
 
 **Rationale**: The spec only needs occurrences "the next time the app is opened" or "at the date change while open". Nothing must run while the app is closed. WorkManager would add a dependency and a process with no user benefit (`android-background` decision tree: no need to survive process death, so not this skill).
 
@@ -254,7 +254,7 @@ Both are `internal` to `:feature:transactions:presentation`, and each KDoc state
 **Decision**:
 - `:core:database` opens Room with `SupportOpenHelperFactory(passphrase)` from `net.zetetic:sqlcipher-android`.
 - Passphrase: 32 bytes from `SecureRandom`, generated once and encrypted with an AndroidKeyStore AES-256-GCM key (alias `spendless_db_key`, `setRandomizedEncryptionRequired(true)`). Only the IV and ciphertext are stored, in `noBackupFilesDir`.
-- The passphrase array is zeroed after the factory is built.
+- The passphrase array is **not** zeroed. `SupportOpenHelperFactory` and `SupportHelper` keep a reference to the array (no copy) and SQLCipher reads it on each lazy open, so zeroing it after `build()` would silently key the database with 32 zero bytes (verified against the sqlcipher-android source, 2026-11-16). It lives only inside the factory singleton and is never logged or persisted unwrapped.
 - `backup_rules.xml` and `data_extraction_rules.xml` exclude the database and the key blob.
 - `Room.databaseBuilder` without the factory exists nowhere in production code. In-memory Room without encryption is used **only** in tests.
 - No `Log.*` anywhere in the transaction data or presentation path.

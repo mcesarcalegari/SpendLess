@@ -1,6 +1,6 @@
 # Feature Specification: Transactions
 
-**Feature Branch**: none (spec directory `specs/001-transactions`)
+**Feature Branch**: `001-transactions`
 
 **Created**: 2026-11-13
 
@@ -61,7 +61,7 @@ Designer notes attached to the Create Transaction frames:
 - Q: If the app stays open past midnight and a recurring transaction falls due, should the new occurrence appear right away, or only the next time the app is opened? → A: Right away, at the date change, while the app is open.
 - Q: What are the maximum lengths for the Receiver/Sender name and for the note? → A: The name can be up to 50 characters and the note up to 500 characters.
 - Q: When a monthly repeat is anchored to the 31st, and a short month pushes one occurrence to an earlier day (for example Feb 28), does the next occurrence go back to the 31st, or stay on the earlier day? → A: It goes back to the original day (Jan 31 → Feb 28 → Mar 31 → Apr 30). A yearly repeat set on Feb 29 falls on Feb 28 in non-leap years and Feb 29 in leap years.
-- Q: When a recurring occurrence is added automatically, where does it go in that day's list relative to transactions the user entered by hand? → A: It takes the original transaction's time of day on its due date and is sorted by that time, both when added live and when caught up.
+- Q: When a recurring occurrence is added automatically, where does it go in that day's list relative to transactions the user entered by hand? → A: It takes the original transaction's time of day on its due date, or the moment it is added if that is earlier, and is sorted by that time, both when added live and when caught up. (Amended 2026-11-16: the cap stops an occurrence added at midnight from ranking above transactions the user enters later that day.)
 - Q: Is the app's text English only for this feature, or must it follow the phone's language? → A: English only. Day headers, month and weekday names, ordinals, repeat labels and category names are always in English, whatever the phone's language.
 - Q: Must this feature be usable with the phone's screen reader, including spoken labels for the note badge and for whether a row is an expense or an income? → A: Only basic labels for the icon-only controls (back, add, close, note badge). Fuller screen-reader support is out of scope.
 - Q: Should a recurring expense or income be able to end in this feature, for example on an end date or after a set number of times? → A: Yes, by the user stopping it from the list. Long-pressing any row that belongs to a recurring series (the original or any occurrence) opens a small menu with one item, "Stop repeating". Choosing it means no further occurrences are added after that day. There is no end date or end count in the create sheet.
@@ -223,6 +223,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 - **No transactions at all**: the list shows no groups. A dedicated empty-state design is not part of this frame set (see Assumptions).
 - **Switching Expense ↔ Income after picking a category**: the chosen expense category is kept and comes back if the user switches back to Expense.
 - **Closing the sheet with unsaved input**: the input is discarded without asking, and nothing is recorded.
+- **Saving fails** (for example, the phone is out of storage): the sheet stays open, everything the user typed is kept, and a short message under *Create* says the transaction was not saved. When storage is full it reads "Not enough storage to save this transaction."; otherwise "Couldn't save the transaction. Please try again." No Figma frame shows this state; the product owner approved the text on 2026-11-16.
 
 ## Requirements *(mandatory)*
 
@@ -231,7 +232,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 **Transaction list**
 
 - **FR-001**: The system MUST show all of the user's transactions on one *All Transactions* screen, grouped by calendar day, with the newest day first.
-- **FR-002**: Within a day, the system MUST show the most recently recorded transaction first. An automatically added recurring occurrence counts as recorded at the original transaction's time of day on its due date, whether it was added live or caught up later.
+- **FR-002**: Within a day, the system MUST show the most recently recorded transaction first. An automatically added recurring occurrence counts as recorded at the original transaction's time of day on its due date, or at the moment it is added if that is earlier, whether it was added live or caught up later.
 - **FR-003**: Day headers MUST read "TODAY" for the current date, "YESTERDAY" for the previous date, and the month name and day number (for example "JANUARY 9") for any older date.
 - **FR-004**: Each row MUST show the category icon, the counterparty name (receiver or sender), a secondary label (the category name for expenses, "Income" for incomes), and the amount.
 - **FR-005**: In the list, expense amounts MUST be shown as negative in the normal text colour. Income amounts MUST be shown as positive and highlighted as incoming. The two must be easy to tell apart at a glance.
@@ -256,6 +257,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 - **FR-021**: When the sheet opens, the keyboard MUST already be shown and ready for input, with no extra tap.
 - **FR-022**: Tapping *Create* with valid input MUST save the transaction dated today, close the sheet, and return the user to the list.
 - **FR-023**: Tapping the close (✕) control MUST close the sheet without saving anything.
+- **FR-022a**: If saving fails, the sheet MUST stay open with all input kept and show a message under *Create* saying the transaction was not saved (see Edge Cases). Nothing is recorded.
 - **FR-024**: Switching between *Expense* and *Income* MUST keep the name, amount, note and repeat values the user has already entered.
 - **FR-025**: For a transaction with a repeat other than *Does not repeat*, the system MUST automatically add a new transaction on each later due date. The new transaction copies the type, name, amount, category and note. Occurrences are never created ahead of their due date.
 - **FR-025a**: Due dates that passed while the app was closed MUST be caught up the next time the app is opened. Exactly one transaction is added per missed due date, and none is added twice.
@@ -285,7 +287,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 
 **Accessibility**
 
-- **FR-036**: Each control that is only an icon (back, add (+), close (✕) and the note badge) MUST have a short spoken label for the phone's screen reader, for example "Back", "Add transaction", "Close", "Show note". Fuller screen-reader support, such as spoken expense/income type or expanded/collapsed state, is out of scope for this feature.
+- **FR-036**: Each control that is only an icon (back, add (+), close (✕) and the note badge) MUST have a short spoken label for the phone's screen reader, for example "Back", "Add transaction", "Close", "Show note". The note badge's label says what tapping it will do ("Show note" or "Hide note"). Fuller screen-reader support, such as spoken expense/income type or expanded/collapsed state, is out of scope for this feature.
 
 **Expense categories**
 
@@ -311,7 +313,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 - **SC-002**: 95% of first-time users create a valid transaction on their first try, without hitting a disabled *Create* button they cannot explain.
 - **SC-003**: In a moderated test, users tell expenses from incomes correctly for 100% of rows on the list screen, at a glance.
 - **SC-004**: A newly created transaction is visible in the list within 1 second of tapping *Create*.
-- **SC-005**: The transaction list scrolls smoothly, without visible stutter, with at least 1,000 transactions spread over 12 months.
+- **SC-005**: The transaction list scrolls smoothly: at least 95% of frames are drawn on time while flinging through at least 1,000 transactions spread over 12 months, on a mid-range phone.
 - **SC-006**: Every amount shown in the list and the create sheet matches the user's amount-format preference in 100% of checked cases.
 - **SC-007**: No transaction data is lost across app restarts. Every created transaction is still listed after the app is closed and reopened.
 - **SC-008**: For recurring transactions, 100% of due occurrences, including those missed while the app was closed, appear in the list exactly once, on their correct day, the next time the user opens the list.
@@ -325,7 +327,7 @@ Amounts everywhere in this feature follow the user's amount-format preferences (
 - **Amount-format preferences come from elsewhere**: a separate preferences feature owns the currency symbol, the negative-number style, the decimal separator and the thousands separator. Building that feature is out of scope here. This feature follows the four values from one shared place, which holds fixed defaults (`$`, minus prefix, `.`, `,`) until that feature exists. The defaults match the primary mockup. Currency conversion is out of scope: the symbol is only shown, never used to convert amounts.
 - **Transaction date is always "now"**: the mockups have no date picker, so back-dating or future-dating is out of scope.
 - **Editing and deleting transactions are out of scope**: no frame in this set shows them. Stopping a recurring series (User Story 6) is the one exception, added by the product owner. It stops future occurrences only, and deletes nothing.
-- **Stop menu and confirmation are not in Figma**: the long-press menu, its *Stop repeating* item and the confirmation dialog come from the product owner (clarification on 2026-11-13), not from a mockup. The text was chosen to match the existing *Does not repeat* option. The menu and the dialog must reuse the design system's existing menu and dialog components. The design system has no menu or dialog. On 2026-11-13 the product owner decided that, until Figma provides them, the menu takes the look of the existing selection list (the same surface as the category and repeat lists) and the dialog is built from the existing surfaces, text styles and text buttons. Both are swapped for real designs once Figma provides them.
+- **Stop menu and confirmation are not in Figma**: the long-press menu, its *Stop repeating* item and the confirmation dialog come from the product owner (clarification on 2026-11-13), not from a mockup. The text was chosen to match the existing *Does not repeat* option. The design system has no menu or dialog component. On 2026-11-13 the product owner decided that, until Figma provides them, the menu takes the look of the existing selection list (the same surface as the category and repeat lists) and the dialog is built from the existing surfaces, text styles and text buttons. Both are swapped for real designs once Figma provides them.
 - **Entering a note has no mockup**: no frame shows the note being typed. On 2026-11-13 the product owner decided that tapping *Add Note* turns that line into a centred note field in the same look as the *Add Note* line itself, growing over as many lines as needed. If the field is left empty, it returns to the *Add Note* line.
 - **Viewing a note**: notes are read by expanding the row in the list (User Story 3). Editing or deleting a note after the transaction is created is out of scope.
 - **What toggles the note**: the user named the note badge as the control, so only tapping the badge expands or collapses a row. Tapping anywhere else on the row does nothing.

@@ -19,7 +19,7 @@ The model has three layers. Domain models are pure Kotlin and live in `:feature:
 | `note` | `String?` | `null` when empty after trimming. ≤ 500 chars | FR-016 |
 | `category` | `ExpenseCategory?` | Required (non-null) when `type == EXPENSE`; must be `null` when `type == INCOME` | FR-017, FR-018 |
 | `repeat` | `RepeatFrequency` | `DOES_NOT_REPEAT` for every occurrence | FR-019, FR-025b |
-| `recordedAt` | `Instant` | Creation instant. For an occurrence: due date + the original's local time of day | FR-002, FR-022 |
+| `recordedAt` | `Instant` | Creation instant. For an occurrence: `min(due date + the original's local time of day, the instant it is materialised)` | FR-002, FR-022 |
 | `zoneId` | `ZoneId` | Zone at recording. Used to compute the local date and time-of-day anchor | FR-002 |
 | `seriesId` | `Long?` | `null` for a one-time transaction. Equals its own `id` for a recurring original. The original's `id` for an occurrence | FR-025b, FR-037 |
 | `occurrenceDate` | `LocalDate?` | Due date for occurrences only; `null` otherwise | FR-025a |
@@ -85,9 +85,9 @@ These follow `android-error-handling`. Feature errors:
 
 Only the signatures are listed here. The full contract is in [contracts/domain-interfaces.md](./contracts/domain-interfaces.md).
 
-- `TransactionLocalDataSource`: observe all, insert, insert occurrences (ignoring duplicates), stop a series, read running series.
+- `TransactionLocalDataSource`: see the contract (`observeTransactions`, `insert`, `insertRecurring`, `runningSeries`, `materialize`, `stopSeries`, `observeRunningSeriesIds`).
 - Use cases (plain classes, constructor-injected):
-  - `TransactionValidator` (sync) followed by `CreateTransaction` (persists a validated `Transaction`). When `repeat != DOES_NOT_REPEAT`, `CreateTransaction` sets `seriesId = id` and creates the series row in the same transaction.
+  - `TransactionValidator` (sync) followed by `CreateTransaction` (persists a validated `Transaction`). When `repeat != DOES_NOT_REPEAT`, `CreateTransaction` calls `insertRecurring`; the DAO's `insertWithSeries` sets `seriesId = id` and creates the series row atomically.
   - `MaterializeDueOccurrences(today)`: catch-up and live (FR-025, FR-025a, FR-025c).
   - `StopRecurringSeries(seriesId, today)`: FR-038.
   - `ObserveTransactions`: `Flow<List<Transaction>>`, newest first.
@@ -101,12 +101,12 @@ Only the signatures are listed here. The full contract is in [contracts/domain-i
 | Column | Type | Constraint |
 |---|---|---|
 | `id` | INTEGER | PK, autoGenerate |
-| `type` | TEXT | `EXPENSE`/`INCOME` (TypeConverter from enum name) |
+| `type` | TEXT | NOT NULL. `EXPENSE`/`INCOME`, stored as the enum name (no TypeConverter: `:core:database` cannot see the domain enums; mapping happens in `:feature:transactions:data`) |
 | `counterparty` | TEXT | NOT NULL |
-| `amount_minor` | INTEGER | NOT NULL, > 0 |
+| `amount_minor` | INTEGER | NOT NULL, > 0 (enforced by `TransactionValidator`; Room has no CHECK) |
 | `note` | TEXT | NULL |
-| `category` | TEXT | NULL |
-| `repeat` | TEXT | NOT NULL |
+| `category` | TEXT | NULL, enum name |
+| `repeat` | TEXT | NOT NULL, enum name |
 | `recorded_at_epoch_ms` | INTEGER | NOT NULL, **indexed** (sort key, FR-002) |
 | `zone_id` | TEXT | NOT NULL |
 | `series_id` | INTEGER | NULL, indexed |
@@ -119,7 +119,7 @@ Unique index: `(series_id, occurrence_date_epoch_day)`. SQLite treats NULLs as d
 | Column | Type | Constraint |
 |---|---|---|
 | `series_id` | INTEGER | PK; FK → `transactions.id` |
-| `frequency` | TEXT | NOT NULL |
+| `frequency` | TEXT | NOT NULL, enum name |
 | `anchor_epoch_day` | INTEGER | NOT NULL |
 | `anchor_seconds_of_day` | INTEGER | NOT NULL |
 | `zone_id` | TEXT | NOT NULL |

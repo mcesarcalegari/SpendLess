@@ -60,7 +60,7 @@ This plan delivers the **All Transactions** list and the **Create Transaction** 
 - Amounts are `Long` minor units, at most 999,999,999.99.
 - All text is English only.
 
-**Scale/Scope**: 2 screens (one of them a sheet); 7 DS components plus theme tokens and icons; 1 Room DB; about 10 JVM test classes and 4 instrumented test classes.
+**Scale/Scope**: 2 screens (one of them a sheet); 7 DS components plus theme tokens and icons; 1 Room DB; about 18 JVM test classes and 8 instrumented test classes.
 
 No **NEEDS CLARIFICATION** items remain. Every open question was resolved in [research.md](./research.md) or by user decision (Complexity Tracking).
 
@@ -70,11 +70,11 @@ No **NEEDS CLARIFICATION** items remain. Every open question was resolved in [re
 
 | # | Principle | Status | Evidence |
 |---|---|---|---|
-| 1 | **I. Figma SSoT**: nodes fetched with design-context | ✅ PASS | 18 nodes fetched with `get_design_context` (structured first), plus `get_metadata` and `get_variable_defs`. Full log in research R0. Screenshots were used only as a visual cross-check. **Two kit masters (`406:2552`, `406:2443`) were rejected by the API.** Their values come from the fetched instances (R6). The failure is reported, not hidden. |
+| 1 | **I. Figma SSoT**: nodes fetched with design-context | ✅ PASS | 18 nodes fetched with `get_design_context` (structured first), plus `get_metadata` and `get_variable_defs`. Full log in research R0. Screenshots were used only as a visual cross-check. **Two kit masters (`406:2552`, `406:2443`) were rejected by the API.** Their values come from the fetched instances (R6). The failure is reported, not hidden. Exception approved by the owner (Complexity Tracking, F5). |
 | 2 | **II. DS reuse**: reused and new components and where they live | ✅ PASS | Reused: existing theme (colours, Figtree typography, `bodyXSmall`, `success`), moved to `:core:design-system`. **New in `:core:design-system`** (from page `0:1`): `SpendLessButton` (`406:110`), `SpendLessIconButton` (`406:3390`), `SpendLessFloatingActionButton` (`410:2338`), `SpendLessSegmentedButton` (`406:5441`), `SpendLessTextField` (`407:1793`), `SpendLessSelect` (`2415:10171`/`10118`/`10072`), `SpendLessTopAppBar` (kit instance), `SpendLessShadows`, `SpendLessIcons`, wired fixed colour roles. **Feature-internal** (from tokens only): `TransactionRow`, `CounterpartyInput`, `AmountInput`, `NoteInput`, `CreateTransactionSheet`, `StopRepeatingMenu`, `StopRepeatingDialog`, day-header style. Contracts: [design-system-components.md](./contracts/design-system-components.md), [transactions-ui.md](./contracts/transactions-ui.md). |
 | 3 | **III. Icons** | ✅ PASS | All 8 icons are regenerated from DS symbol nodes with the 24×24 viewport preserved (R5). **No Material fallbacks.** The existing `:app` drawables were found to crop their viewports, so they are replaced, not reused. |
 | 4 | **IV. Portrait only** | ✅ PASS (with work item) | `AndroidManifest.xml` currently has **no** orientation lock (verified 2026-11-13). This plan **adds** `android:screenOrientation="portrait"` to `MainActivity`. No other form-factor tasks, tests or previews. Width handled with `fillMaxWidth` and `weight`. |
-| 5 | **V. Spec has no technology** | ✅ PASS | spec.md names no library, class or module. **Spec amended first** (Assumptions, 2026-11-13) to record the owner's decisions on the stop menu and dialog look and on note entry, so the plan adds nothing the spec does not state. |
+| 5 | **V. Spec has no technology** | ✅ PASS | spec.md names no library, class or module. **Spec amended first** (Assumptions, 2026-11-13) to record the owner's decisions on the stop menu and dialog look, on note entry, and on the save-failure message (FR-022a, 2026-11-16), so the plan adds nothing the spec does not state. |
 | 6 | **VI. Skills loaded** | ✅ PASS (planning) | Loaded for this plan: `figma:figma-design-to-code`, `android-module-structure`, `android-compose-components`, `android-presentation-mvi`, `android-data-layer`, `android-background` (decided against WorkManager, R10), `android-error-handling` (one error type per `Result`, which split validation from storage), `android-navigation` (graph takes a `NavController`; the sheet is not a destination). **To load at implementation, before writing the matching code**: `android-version-catalog`, `android-di-koin`, `android-compose-architecture`, `kotlin-coroutines`, `kotlin-flows`, `figma-to-android-vector`, `android-unit-testing`, `android-integration-testing`, `android-ui-testing`, `kotlin-mutation-testing`, `android-preview-figma-verify`, `android-ui-verify`, `android-ui-screenshot-verify`. |
 | 7 | **VII. Figma URL per composable** | ✅ PASS | Each composable's `Figma:` node(s), including per-variant and per-state previews, are listed in the two UI contracts. Composables without a node (stop menu and dialog, note-typing state) carry a KDoc stating the user decision instead. |
 | 8 | **VIII. A preview per composable, one per distinct state** (added in constitution 1.3.0, 2026-11-16) | ✅ PASS | Every new composable, including private sub-composables, has its per-state previews listed in the UI contracts ([transactions-ui.md](./contracts/transactions-ui.md) "Previews" lines, [design-system-components.md](./contracts/design-system-components.md) rules). Pressed and focused DS states are driven through an `interactionSource` parameter. Exempt: `TransactionListRoot` and `CreateTransactionRoot` (their Screens carry the previews), `ObserveAsEvents`, and the `SpendLessIcons` getters. |
@@ -110,10 +110,12 @@ build-logic/convention/src/main/kotlin/
 ├── ComposeConventionPlugin.kt             # compiler + BOM
 ├── DomainModuleConventionPlugin.kt        # pure Kotlin/JVM + JUnit5
 ├── RoomConventionPlugin.kt                # Room + KSP + schema dir
-└── KoinConventionPlugin.kt
+├── KoinConventionPlugin.kt
+└── KotlinAndroid.kt                       # shared SDK/JDK config helper
 
 app/src/main/java/com/plcoding/spendlesssample/
-├── SpendLessApp.kt                        # startKoin, RecurringOccurrencesTrigger
+├── SpendLessApp.kt                        # startKoin, starts RecurringOccurrencesTrigger
+├── RecurringOccurrencesTrigger.kt         # app-scoped catch-up + midnight materialisation
 ├── MainActivity.kt                        # SpendLessTheme + NavHost
 └── navigation/SpendLessNavHost.kt
 
@@ -136,7 +138,7 @@ core/database/src/main/kotlin/.../core/database/
 core/database/schemas/                     # exported Room schema (v1)
 
 core/presentation/src/main/kotlin/.../core/presentation/
-├── UiText.kt, ObserveAsEvents.kt
+├── UiText.kt, ObserveAsEvents.kt, DataErrorUiText.kt
 └── format/{AmountFormatter.kt, AmountInputParser.kt}
 
 core/design-system/src/main/
@@ -153,7 +155,10 @@ feature/transactions/domain/src/main/kotlin/.../transactions/domain/
 │          RecurringSeries.kt, TransactionDraft.kt, CreateTransactionError.kt}
 ├── TransactionLocalDataSource.kt
 ├── RecurrenceSchedule.kt, TransactionValidator.kt
-└── usecase/{CreateTransaction.kt, MaterializeDueOccurrences.kt, StopRecurringSeries.kt}
+└── usecase/{ObserveTransactions.kt, CreateTransaction.kt, MaterializeDueOccurrences.kt,
+            StopRecurringSeries.kt}
+# testFixtures: core/domain (FakeCurrentDateProvider, FakeAmountFormatPreferencesSource),
+#               feature/transactions/domain (FakeTransactionLocalDataSource)
 
 feature/transactions/data/src/main/kotlin/.../transactions/data/
 ├── RoomTransactionDataSource.kt, TransactionMappers.kt
@@ -175,7 +180,10 @@ feature/transactions/presentation/src/main/kotlin/.../transactions/presentation/
 # Tests (mirrors of the above):
 #   */src/test/...           JUnit5 JVM tests (formatters, parser, validator, schedule, use cases, ViewModels)
 #   core/database/src/androidTest/...      TransactionDaoTest, EncryptedDatabaseTest
-#   feature/transactions/presentation/src/androidTest/...  TransactionListScreenTest, CreateTransactionFlowTest
+#   feature/transactions/data/src/androidTest/...          RoomTransactionDataSourceTest
+#   feature/transactions/presentation/src/androidTest/...  TransactionListScreenTest, CreateTransactionFlowTest,
+#                                                          AmountFormatPreferencesSwapTest, TransactionListScrollTest
+#   app/src/androidTest/...                                RecurringOccurrencesTriggerTest
 ```
 
 **Structure Decision**: This is the feature-layered Clean Architecture from `android-module-structure`, which AGENTS.md §2 makes mandatory. Domain modules are pure Kotlin/JVM. Features never depend on each other. All Gradle setup lives in `:build-logic` and every version lives in `gradle/libs.versions.toml`.
@@ -203,8 +211,8 @@ feature/transactions/presentation/src/main/kotlin/.../transactions/presentation/
 | Export icon hidden (F8) | Spec FR-009 (recorded clarification) | — |
 | Create drawn enabled in empty mockups, implemented disabled (F6) | Designer note plus FR-015 | — |
 | Amount column `min 100dp` instead of fixed `100dp` (F3) | A fixed width cannot show 999,999,999.99 untruncated (edge case) | A fixed width breaks FR-007 |
-| Top-bar icons follow the kit instance (circle, onSurface), not DS Icon button `406:3390` (F5, R6) | The screens' own instances differ from the DS page | Using the DS icon button would drift from the screen frames |
-| Create-failure message shown in DS supporting-text style under Create (no Figma error design) | A storage failure (for example disk full) must not lose the input silently | A silent failure would leave the user unsure whether the transaction was saved |
+| Top-bar icons follow the kit instance (circle, onSurface), not DS Icon button `406:3390` (F5, R6) | The screens' own instances differ from the DS page | Using the DS icon button would drift from the screen frames. Masters `406:2552`/`406:2443` are unreachable (research R0); building from the fetched screen instances is a fail-closed exception, **owner approved 2026-11-16** |
+| Create-failure message shown in DS supporting-text style under Create (no Figma error design) | A storage failure (for example disk full) must not lose the input silently | A silent failure would leave the user unsure whether the transaction was saved. **Owner approved 2026-11-16** (spec FR-022a) |
 | Day-header style derived in the feature (F4) | No Figma text style matches Medium 12/16 | Using `bodyXSmall` (Regular) would drift |
 | `#180040` shadow tint as a DS-internal constant (R4) | Not a Figma variable, but used by three effects | — |
 | First multi-module split happens inside this feature (R1) | AGENTS.md §2 makes the layout mandatory; this is the first feature | — |
