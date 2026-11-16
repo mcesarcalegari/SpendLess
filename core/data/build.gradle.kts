@@ -9,4 +9,6 @@ android {
 
 dependencies {
     implementation(projects.core.domain)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.kotlinx.coroutines.android)
 }
