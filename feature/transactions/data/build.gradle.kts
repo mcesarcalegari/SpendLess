@@ -12,3 +12,10 @@ dependencies {
     implementation(projects.core.database)
     implementation(projects.feature.transactions.domain)
 }
+
+dependencies {
+    androidTestImplementation(libs.room.runtime)
+    androidTestImplementation(libs.assertk)
+    androidTestImplementation(libs.turbine)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+}
