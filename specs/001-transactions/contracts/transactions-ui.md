@@ -2,7 +2,7 @@
 
 **Module**: `:feature:transactions:presentation`. Screens follow `android-presentation-mvi`: a Root and a Screen in one file. Feature components are `internal` and are built **only** from `:core:design-system` components and tokens. Figma base: `https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=`.
 
-Each composable's KDoc must carry the `Figma:` line(s) listed here (Constitution VII).
+Each composable's KDoc must carry the `Figma:` line(s) listed here (Constitution VII). Each composable, including private sub-composables, must have the per-state previews listed in its **Previews** line (Constitution VIII). Roots are exempt because their Screens carry the previews.
 
 ---
 
@@ -42,7 +42,7 @@ Figma: `2417:12042` (default), `2417:12068` (scrolled, pinned header).
 | Create sheet | `CreateTransactionSheet` when `isCreateSheetOpen` | `2415:6629` |
 | Menu / dialog | `StopRepeatingMenu`, `StopRepeatingDialog` | no node (R11) |
 
-**Previews**: populated (today, yesterday and older), pinned-header scroll state, one expanded expense and one expanded income, long name, max amount, empty list.
+**Previews**: populated (today, yesterday and older), pinned-header scroll state (a `LazyListState` that starts scrolled), one expanded expense and one expanded income, long name, max amount, empty list, parentheses format. `DayHeader`: TODAY, YESTERDAY, an older date.
 
 ### `TransactionRow` (internal)
 
@@ -67,13 +67,14 @@ All values are in research R9. Summary:
 - Expanded: card `surfaceContainerLowest`, radius 16, shadow `raised`, padding 4/4/4/10, overhanging 4dp each side. Note `bodySmall`, start padding 52dp.
 - Long-press: `pointerInput { detectTapGestures(onLongPress) }` + `HapticFeedbackType.LongPress`, plus a semantics `customActions` "Stop repeating".
 
-**Previews**: expense collapsed with no note, with note, expanded; income collapsed with note, expanded; long name; `-$999,999,999.99`; parentheses format.
+**Previews**: expense collapsed with no note, collapsed with note, expanded; income collapsed with no note, collapsed with note, expanded; long name; `-$999,999,999.99`; parentheses format; 500-character note expanded. The note badge, if extracted, gets subdued and active previews for expense and income.
 
 ### `StopRepeatingMenu` / `StopRepeatingDialog` (internal)
 
 - Menu: `Popup` below the row; Select-list surface tokens (`2415:10118`); one 48dp row "Stop repeating", `labelMedium`, start padding 16dp.
 - Dialog: M3 `AlertDialog`, `surfaceContainerLowest`, radius 28. Title "Stop repeating %1$s?" in `titleLarge`. Confirm DS Text button "Stop"; dismiss DS Text button "Cancel".
 - KDoc: "No Figma node; composed from DS per user decision 2026-11-13 (research R11)."
+- **Previews**: menu open; dialog with a short name; dialog with a 50-character name.
 
 ---
 
@@ -108,6 +109,16 @@ Figma (per state, for previews and KDoc):
 | Repeat | DS `SpendLessSelect`, emoji 🔄, tile `tertiaryContainer`, list style TextIndented; field shows the short label | `2415:11244`, `2415:11280` |
 | Create | DS `SpendLessButton(Filled, "Create", enabled = isCreateEnabled)` full width | `2415:6659`, disabled `406:271` |
 | Layout | Column: segmented → 34dp → inputs (300dp, centred, gap 12) → 32dp → filters (104dp fixed, gap 8, bottom-aligned) → 12dp → Create | R7 |
+
+**Previews** (`CreateTransactionScreen`): one per row of the state table above, plus a storage-error state (message under Create) and a note-editing state (no Figma frame, R8).
+
+**Feature components and their previews** (all `internal`):
+
+| Composable | Previews |
+|---|---|
+| `CounterpartyInput` | placeholder "Receiver", placeholder "Sender", typing, 50-character name |
+| `AmountInput` | empty expense `-$`, empty expense `($ … )`, empty income, filled expense, filled income, `999,999,999.99`, `,` decimal separator |
+| `NoteInput` | idle "Add Note", editing empty, editing multi-line |
 
 **Strings** (English only; `values/strings.xml` of the feature):
 
