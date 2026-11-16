@@ -11,7 +11,7 @@ Build **SpendLess**, a personal Android app for tracking income and expenses wit
 ## 2. Context
 
 - **Project:** `com.plcoding.spendlesssample` (will be renamed when the multi-module split lands).
-- **Stack:** Kotlin 2.2.10, AGP 9.1.1, Gradle 9.3.1, Jetpack Compose (BOM 2024.09.00), Material3, version catalog (`gradle/libs.versions.toml`), JDK 11.
+- **Stack:** Kotlin 2.2.10, AGP 9.1.1, Gradle 9.3.1, Jetpack Compose (BOM 2026.06.01), Material3, version catalog (`gradle/libs.versions.toml`), JDK 11.
 - **Min/Target/Compile SDK:** 26 / 36 / 36.
 - **Distribution:** Offline-first. There is **no remote backend** until one is explicitly added — agents must not invent network calls, sync workers, or auth flows that assume a server.
 - **Architecture (mandatory from day one):** Feature-layered Clean Architecture — `:app` assembles `:core:*` and `:feature:<name>:presentation|domain|data`. Domain depends on nothing. Features never depend on each other; cross-feature shared code lives in `:core:domain` or `:core:presentation`. See the `android-module-structure` skill for the canonical layout.
