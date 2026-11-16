@@ -34,7 +34,7 @@ Bindings in `:core:data`:
 
 - `DefaultAmountFormatPreferencesSource` → `flowOf(AmountFormatPreferences.Default)`.
 - `SystemCurrentDateProvider(context, clock)` → research R10.
-- `Clock` → `Clock.systemDefaultZone()`.
+- `Clock` → `SystemDefaultZoneClock()`: a system clock that re-reads `ZoneId.systemDefault()` on every call. `Clock.systemDefaultZone()` captures the zone once and would go stale after a time-zone change.
 
 ## `:core:presentation`
 
