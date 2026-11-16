@@ -49,7 +49,7 @@ fun SpendLessFloatingActionButton(
             modifier = modifier
                 .size(FabSize)
                 .spendLessShadow(SpendLessShadows.fab, FabShape)
-                .previewStateLayer(colors.onSecondaryContainer, FabShape),
+                .previewStateLayer(LocalPreviewInteraction.current, colors.onSecondaryContainer, FabShape),
             shape = FabShape,
             containerColor = colors.secondaryContainer,
             contentColor = colors.onSecondaryContainer,

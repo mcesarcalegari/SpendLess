@@ -115,7 +115,7 @@ private fun Segment(
                 onClick = onClick,
                 modifier = Modifier
                     .fillMaxSize()
-                    .previewStateLayer(colors.primaryContainer, SegmentShape, alpha = 0.08f)
+                    .previewStateLayer(LocalPreviewInteraction.current, colors.primaryContainer, SegmentShape, alpha = 0.08f)
                     .semantics { role = Role.Tab },
                 shape = SegmentShape,
                 color = if (isSelected) colors.surfaceContainerLowest else Color.Transparent,

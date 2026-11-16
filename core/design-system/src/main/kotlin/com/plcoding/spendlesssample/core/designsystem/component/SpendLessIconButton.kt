@@ -72,7 +72,7 @@ fun SpendLessIconButton(
                 onClick = onClick,
                 // Figma Standard Disabled: the whole button at 38% with an onSurface icon (research R15 D1).
                 modifier = sized
-                    .previewStateLayer(colors.onSurfaceVariant, IconButtonShape)
+                    .previewStateLayer(LocalPreviewInteraction.current, colors.onSurfaceVariant, IconButtonShape)
                     .alpha(if (enabled) 1f else DisabledAlpha),
                 enabled = enabled,
                 colors = IconButtonDefaults.iconButtonColors(
@@ -104,7 +104,7 @@ fun SpendLessIconButton(
             ProvideStateLayer(color = stateLayer) {
                 FilledIconButton(
                     onClick = onClick,
-                    modifier = sized.previewStateLayer(stateLayer, IconButtonShape),
+                    modifier = sized.previewStateLayer(LocalPreviewInteraction.current, stateLayer, IconButtonShape),
                     enabled = enabled,
                     shape = IconButtonShape,
                     colors = IconButtonDefaults.filledIconButtonColors(

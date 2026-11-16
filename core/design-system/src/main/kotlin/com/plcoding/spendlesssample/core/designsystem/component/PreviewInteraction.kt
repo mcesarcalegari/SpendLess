@@ -32,16 +32,17 @@ internal fun WithPreviewInteraction(interaction: PreviewInteraction?, content: @
 
 /**
  * Draws the Figma flat state layer ([color] at [alpha], clipped to [shape] inset by [inset]) when a
- * preview forces an interaction state. No-op at runtime.
+ * preview forces [interaction]. Callers pass `LocalPreviewInteraction.current`, which is `null` at
+ * runtime, so this is a no-op outside previews.
  */
-@Composable
 internal fun Modifier.previewStateLayer(
+    interaction: PreviewInteraction?,
     color: Color,
     shape: Shape,
     alpha: Float = 0.12f,
     inset: Dp = 0.dp,
 ): Modifier {
-    if (LocalPreviewInteraction.current == null) return this
+    if (interaction == null) return this
     return drawWithContent {
         drawContent()
         val insetPx = inset.toPx()

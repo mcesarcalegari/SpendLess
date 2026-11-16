@@ -95,7 +95,7 @@ fun SpendLessTopAppBarIconButton(
     ProvideStateLayer(color = colors.onSurface) {
         IconButton(
             onClick = onClick,
-            modifier = modifier.previewStateLayer(colors.onSurface, CircleShape, inset = 4.dp),
+            modifier = modifier.previewStateLayer(LocalPreviewInteraction.current, colors.onSurface, CircleShape, inset = 4.dp),
             colors = IconButtonDefaults.iconButtonColors(contentColor = colors.onSurface),
             interactionSource = interactionSource,
             shape = CircleShape,

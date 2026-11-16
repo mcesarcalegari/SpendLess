@@ -73,7 +73,7 @@ fun SpendLessButton(
                 onClick = onClick,
                 modifier = modifier
                     .heightIn(min = ButtonMinHeight)
-                    .previewStateLayer(colors.onPrimary, ButtonShape),
+                    .previewStateLayer(LocalPreviewInteraction.current, colors.onPrimary, ButtonShape),
                 enabled = enabled,
                 shape = ButtonShape,
                 colors = ButtonDefaults.buttonColors(
@@ -92,7 +92,7 @@ fun SpendLessButton(
                 onClick = onClick,
                 modifier = modifier
                     .heightIn(min = ButtonMinHeight)
-                    .previewStateLayer(colors.primary, ButtonShape),
+                    .previewStateLayer(LocalPreviewInteraction.current, colors.primary, ButtonShape),
                 enabled = enabled,
                 shape = ButtonShape,
                 colors = ButtonDefaults.textButtonColors(
