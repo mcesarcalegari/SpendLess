@@ -531,15 +531,16 @@ private fun SelectListPreview(
     options: ImmutableList<SelectOption<String>>,
     selected: String,
     style: SelectListItemStyle,
-    tileColor: Color = MaterialTheme.colorScheme.primaryFixed,
+    tertiaryTile: Boolean = false,
 ) {
     SpendLessTheme {
+        val colors = MaterialTheme.colorScheme
         Box(Modifier.padding(16.dp)) {
             SelectList(
                 options = options,
                 selected = selected,
                 style = style,
-                leadingTileColor = tileColor,
+                leadingTileColor = if (tertiaryTile) colors.tertiaryContainer else colors.primaryFixed,
                 onPick = {},
                 modifier = Modifier.width(380.dp),
             )
@@ -575,9 +576,15 @@ private fun SpendLessSelectListFewRowsPreview() =
     )
 
 @Composable
-private fun AnchorContentPreview(text: String, supporting: String?, emoji: String?, tile: Color) {
+private fun AnchorContentPreview(text: String, supporting: String?, emoji: String?, tertiaryTile: Boolean = false) {
     SpendLessTheme {
-        SelectAnchorContent(selectedText = text, supportingText = supporting, leadingEmoji = emoji, leadingTileColor = tile)
+        val colors = MaterialTheme.colorScheme
+        SelectAnchorContent(
+            selectedText = text,
+            supportingText = supporting,
+            leadingEmoji = emoji,
+            leadingTileColor = if (tertiaryTile) colors.tertiaryContainer else colors.primaryFixed,
+        )
     }
 }
 
@@ -585,29 +592,29 @@ private fun AnchorContentPreview(text: String, supporting: String?, emoji: Strin
 @Preview(widthDp = 380, showBackground = true)
 @Composable
 private fun SelectAnchorContentIconPreview() =
-    AnchorContentPreview("Entertainment", null, "💻", MaterialTheme.colorScheme.primaryFixed)
+    AnchorContentPreview("Entertainment", null, "💻")
 
 /** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-10277 */
 @Preview(widthDp = 380, showBackground = true)
 @Composable
 private fun SelectAnchorContentTextPreview() =
-    AnchorContentPreview("$", "US Dollar (USD)", null, MaterialTheme.colorScheme.primaryFixed)
+    AnchorContentPreview("$", "US Dollar (USD)", null)
 
 @Preview(widthDp = 380, showBackground = true)
 @Composable
 private fun SelectAnchorContentTextWithoutSupportingPreview() =
-    AnchorContentPreview("$", null, null, MaterialTheme.colorScheme.primaryFixed)
+    AnchorContentPreview("$", null, null)
 
 /** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-11244 */
 @Preview(widthDp = 380, showBackground = true)
 @Composable
 private fun SelectAnchorContentRepeatTilePreview() =
-    AnchorContentPreview("Does not repeat", null, "🔄", MaterialTheme.colorScheme.tertiaryContainer)
+    AnchorContentPreview("Does not repeat", null, "🔄", tertiaryTile = true)
 
 @Preview(widthDp = 380, showBackground = true)
 @Composable
 private fun SelectAnchorContentLongTextPreview() =
-    AnchorContentPreview("Clothing & Accessories and a much longer category name", null, "👔", MaterialTheme.colorScheme.primaryFixed)
+    AnchorContentPreview("Clothing & Accessories and a much longer category name", null, "👔")
 
 /** Category tile. Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-10126 */
 @Preview(showBackground = true)
