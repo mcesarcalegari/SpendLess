@@ -15,3 +15,8 @@ dependencies {
     testImplementation(testFixtures(projects.core.domain))
     androidTestImplementation(testFixtures(projects.core.domain))
 }
+
+dependencies {
+    testImplementation(testFixtures(projects.feature.transactions.domain))
+    androidTestImplementation(testFixtures(projects.feature.transactions.domain))
+}
