@@ -102,6 +102,11 @@ class AmountFormatterTest {
     }
 
     @Test
+    fun `groupInput keeps input that starts with the separator`() {
+        assertThat(formatter.groupInput(".5", default)).isEqualTo(".5")
+    }
+
+    @Test
     fun `groupInput uses the preferred separators`() {
         assertThat(formatter.groupInput("1234567,89", european)).isEqualTo("1.234.567,89")
         assertThat(formatter.groupInput("12000", spaced)).isEqualTo("12 000")

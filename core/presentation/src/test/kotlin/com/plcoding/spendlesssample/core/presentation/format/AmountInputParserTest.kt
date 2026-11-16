@@ -63,6 +63,12 @@ class AmountInputParserTest {
         assertThat(parser.toMinorUnits(raw, default)).isNull()
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["12a", "1,5", "15.999", "-5", "1234567890"])
+    fun `invalid raw input has no amount`(raw: String) {
+        assertThat(parser.toMinorUnits(raw, default)).isNull()
+    }
+
     @Test
     fun `converts with comma as decimal separator`() {
         assertThat(parser.toMinorUnits("15,99", european)).isEqualTo(1599L)
