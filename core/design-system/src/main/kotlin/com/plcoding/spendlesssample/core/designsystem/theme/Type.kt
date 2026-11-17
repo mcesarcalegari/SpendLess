@@ -17,19 +17,24 @@ private val Figtree = FontFamily(
     Font(R.font.figtree_semibold, FontWeight.SemiBold),
 )
 
+/**
+ * Every style starts from the M3 default of its slot so it keeps M3's `LineHeightStyle(Center,
+ * Trim.None)`: a single line then takes its full Figma line height (16sp text in a 24dp line box).
+ * A bare `TextStyle` falls back to Compose's trimming default and renders shorter lines.
+ */
 private val DefaultTypography = Typography()
 
 private fun TextStyle.withFigtree(): TextStyle = copy(fontFamily = Figtree)
 
 val SpendLessTypography = Typography(
-    displayLarge = TextStyle(
+    displayLarge = DefaultTypography.displayLarge.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 45.sp,
         lineHeight = 52.sp,
         letterSpacing = 0.sp,
     ),
-    displayMedium = TextStyle(
+    displayMedium = DefaultTypography.displayMedium.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 36.sp,
@@ -37,14 +42,14 @@ val SpendLessTypography = Typography(
         letterSpacing = 0.sp,
     ),
     displaySmall = DefaultTypography.displaySmall.withFigtree(),
-    headlineLarge = TextStyle(
+    headlineLarge = DefaultTypography.headlineLarge.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
         letterSpacing = 0.1.sp,
     ),
-    headlineMedium = TextStyle(
+    headlineMedium = DefaultTypography.headlineMedium.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
@@ -52,21 +57,21 @@ val SpendLessTypography = Typography(
         letterSpacing = 0.1.sp,
     ),
     headlineSmall = DefaultTypography.headlineSmall.withFigtree(),
-    titleLarge = TextStyle(
+    titleLarge = DefaultTypography.titleLarge.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
         lineHeight = 26.sp,
         letterSpacing = 0.sp,
     ),
-    titleMedium = TextStyle(
+    titleMedium = DefaultTypography.titleMedium.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
     ),
-    titleSmall = TextStyle(
+    titleSmall = DefaultTypography.titleSmall.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
@@ -74,14 +79,14 @@ val SpendLessTypography = Typography(
         letterSpacing = 0.sp,
     ),
     bodyLarge = DefaultTypography.bodyLarge.withFigtree(),
-    bodyMedium = TextStyle(
+    bodyMedium = DefaultTypography.bodyMedium.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
     ),
-    bodySmall = TextStyle(
+    bodySmall = DefaultTypography.bodySmall.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
@@ -89,14 +94,14 @@ val SpendLessTypography = Typography(
         letterSpacing = 0.sp,
     ),
     labelLarge = DefaultTypography.labelLarge.withFigtree(),
-    labelMedium = TextStyle(
+    labelMedium = DefaultTypography.labelMedium.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
     ),
-    labelSmall = TextStyle(
+    labelSmall = DefaultTypography.labelSmall.copy(
         fontFamily = Figtree,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
@@ -105,7 +110,7 @@ val SpendLessTypography = Typography(
     ),
 )
 
-internal val BodyXSmall = TextStyle(
+internal val BodyXSmall = DefaultTypography.bodySmall.copy(
     fontFamily = Figtree,
     fontWeight = FontWeight.Normal,
     fontSize = 12.sp,
