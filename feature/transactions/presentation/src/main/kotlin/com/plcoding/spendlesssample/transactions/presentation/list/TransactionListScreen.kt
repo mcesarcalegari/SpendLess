@@ -45,6 +45,7 @@ import com.plcoding.spendlesssample.transactions.presentation.list.component.Sto
 import com.plcoding.spendlesssample.transactions.presentation.list.component.StopRepeatingMenu
 import com.plcoding.spendlesssample.transactions.presentation.list.component.TransactionRow
 import com.plcoding.spendlesssample.transactions.presentation.list.model.DayGroupUi
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
@@ -221,7 +222,7 @@ fun TransactionListScreen(
  */
 @Composable
 private fun TransactionList(
-    groups: List<DayGroupUi>,
+    groups: ImmutableList<DayGroupUi>,
     expandedIds: ImmutableSet<Long>,
     onNoteBadgeClick: (Long) -> Unit,
     listState: LazyListState,
