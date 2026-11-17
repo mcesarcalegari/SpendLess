@@ -30,9 +30,8 @@ Consistency:
   (resolves /speckit-analyze finding H3).
 
 Follow-up TODOs:
-- AGENTS.md §6 still names Figma fileKey `ftCIcpiLxrMhckuzDmYQWL`. This constitution names
-  `xSFwRCFwe13SK2kAq85SLj` (the user-supplied source). Update AGENTS.md so both agree
-  (tracked as task T135 in specs/001-transactions/tasks.md).
+- ✅ Resolved (T135, 2026-11-17): AGENTS.md §6 now names Figma fileKey
+  `xSFwRCFwe13SK2kAq85SLj` and node `401-935`, matching this constitution.
 - No deferred placeholders.
 -->
 

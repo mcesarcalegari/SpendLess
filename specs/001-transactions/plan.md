@@ -83,7 +83,7 @@ No **NEEDS CLARIFICATION** items remain. Every open question was resolved in [re
 
 **Post-design re-check (after Phase 1)**: unchanged, all ✅. Row 8 was added on 2026-11-16 after the constitution amendment; no design change was needed. The design added no new modules beyond R1 and no unjustified deviations.
 
-**Housekeeping noted (not a gate failure)**: AGENTS.md §6 still names fileKey `ftCIcpiLxrMhckuzDmYQWL`. The constitution's `xSFwRCFwe13SK2kAq85SLj` wins (Governance). An AGENTS.md update is due, as already listed in the constitution's TODOs.
+**Housekeeping noted (not a gate failure)**: AGENTS.md §6 named fileKey `ftCIcpiLxrMhckuzDmYQWL`. The constitution's `xSFwRCFwe13SK2kAq85SLj` wins (Governance). Resolved by T135 (2026-11-17): AGENTS.md §6 now names `xSFwRCFwe13SK2kAq85SLj` / `401-935`.
 
 ## Project Structure
 
