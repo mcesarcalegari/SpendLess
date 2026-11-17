@@ -162,4 +162,51 @@ class TransactionValidatorTest {
         assertThat(errorOf(draft(category = null)))
             .isEqualTo(TransactionValidationError.CATEGORY_MISSING_FOR_EXPENSE)
     }
+
+    @Test
+    fun `valid income without category is stamped with the clock and keeps a null category`() {
+        val tx = success(draft(type = TransactionType.INCOME, name = " Rick ", amountMinor = 2_000, category = null))
+
+        assertThat(tx).isEqualTo(
+            Transaction(
+                id = 0,
+                type = TransactionType.INCOME,
+                counterparty = "Rick",
+                amountMinor = 2_000,
+                note = null,
+                category = null,
+                repeat = RepeatFrequency.DOES_NOT_REPEAT,
+                recordedAt = now,
+                zoneId = zone,
+                seriesId = null,
+                occurrenceDate = null,
+            ),
+        )
+    }
+
+    @Test
+    fun `income with a category is CATEGORY_NOT_ALLOWED_FOR_INCOME`() {
+        assertThat(errorOf(draft(type = TransactionType.INCOME, category = ExpenseCategory.HOME)))
+            .isEqualTo(TransactionValidationError.CATEGORY_NOT_ALLOWED_FOR_INCOME)
+    }
+
+    @Test
+    fun `income with the default Other category is CATEGORY_NOT_ALLOWED_FOR_INCOME`() {
+        assertThat(errorOf(draft(type = TransactionType.INCOME, category = ExpenseCategory.OTHER)))
+            .isEqualTo(TransactionValidationError.CATEGORY_NOT_ALLOWED_FOR_INCOME)
+    }
+
+    @Test
+    fun `income keeps its repeat frequency`() {
+        assertThat(success(draft(type = TransactionType.INCOME, category = null, repeat = RepeatFrequency.WEEKLY)))
+            .prop(Transaction::repeat).isEqualTo(RepeatFrequency.WEEKLY)
+    }
+
+    @Test
+    fun `income name and amount rules still apply`() {
+        assertThat(errorOf(draft(type = TransactionType.INCOME, name = "  ", category = null)))
+            .isEqualTo(TransactionValidationError.NAME_BLANK)
+        assertThat(errorOf(draft(type = TransactionType.INCOME, amountMinor = 0, category = null)))
+            .isEqualTo(TransactionValidationError.AMOUNT_NOT_POSITIVE)
+    }
 }

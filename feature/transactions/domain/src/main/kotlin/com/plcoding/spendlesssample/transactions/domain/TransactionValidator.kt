@@ -24,6 +24,8 @@ class TransactionValidator(private val clock: Clock) {
             note != null && note.length > MAX_NOTE_LENGTH -> TransactionValidationError.NOTE_TOO_LONG
             draft.type == TransactionType.EXPENSE && draft.category == null ->
                 TransactionValidationError.CATEGORY_MISSING_FOR_EXPENSE
+            draft.type == TransactionType.INCOME && draft.category != null ->
+                TransactionValidationError.CATEGORY_NOT_ALLOWED_FOR_INCOME
             else -> null
         }
         if (error != null) return Result.Error(error)
