@@ -2,6 +2,8 @@ package com.plcoding.spendlesssample.transactions.data.di
 
 import com.plcoding.spendlesssample.transactions.data.RoomTransactionDataSource
 import com.plcoding.spendlesssample.transactions.domain.TransactionLocalDataSource
+import com.plcoding.spendlesssample.transactions.domain.TransactionValidator
+import com.plcoding.spendlesssample.transactions.domain.usecase.CreateTransaction
 import com.plcoding.spendlesssample.transactions.domain.usecase.ObserveTransactions
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.factoryOf
@@ -15,4 +17,6 @@ val transactionsDataModule = module {
 /** Use cases of the transactions domain. The domain module itself stays Koin-free. */
 val transactionsDomainModule = module {
     factoryOf(::ObserveTransactions)
+    factoryOf(::TransactionValidator)
+    factoryOf(::CreateTransaction)
 }
