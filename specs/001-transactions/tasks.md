@@ -194,7 +194,7 @@ JVM tests mirror the source root under `src/test/kotlin/…`; instrumented tests
   - Observed, cause not confirmed: the static preview render came out unscrolled with either `rememberLazyListState(initialFirstVisibleItemIndex = 1)` or `LazyListState(1)`, so `TransactionListScreenPinnedHeaderPreview` renders unscrolled; T073 `topGroupHeaderStaysPinnedAfterScrolling` verifies the pinning on a device.
   - **Approved by the owner 2026-11-16 (unplanned `build-logic` change):** T073 needed `espresso-core` 3.7.0 (existing catalog entry) pinned in `ComposeConventionPlugin`: `ui-test-junit4` pulls 3.5.0, which crashes on API 37 (`InputManager.getInstance`).
   - Mutation testing: 31 distinct mutations (plus 4 re-runs after test fixes), all killed except 1 equivalent (`uppercase()` is locale-invariant). Three gaps found and closed: the month formatter moved from a companion to an instance so the German-locale test can see it, the income row's `type` is now asserted, and the restored sheet is asserted on `state.value` before collection. Production files are untracked, so they were restored from backups (verified with `cmp`) instead of `git checkout`.
-  - **Not committed**, at the owner's request (review first).
+  - Held for owner review, then committed on request; `/verify` (working tree vs HEAD) passed with no BLOCKER or MAJOR findings.
 
 **Checkpoint**: The list screen works with seeded data and matches Figma.
 
