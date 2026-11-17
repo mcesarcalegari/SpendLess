@@ -50,4 +50,8 @@ dependencies {
 dependencies {
     testImplementation(testFixtures(projects.core.domain))
     androidTestImplementation(testFixtures(projects.core.domain))
+    androidTestImplementation(libs.androidx.lifecycle.runtime.testing)
+    androidTestImplementation(libs.room.runtime)
+    androidTestImplementation(libs.assertk)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }
