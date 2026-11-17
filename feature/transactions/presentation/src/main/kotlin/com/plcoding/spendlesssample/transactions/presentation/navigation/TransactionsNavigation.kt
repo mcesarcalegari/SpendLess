@@ -4,6 +4,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import com.plcoding.spendlesssample.transactions.presentation.list.TransactionListRoot
 import kotlinx.serialization.Serializable
 
 /** The transactions feature graph. */
@@ -14,14 +15,14 @@ data object TransactionsGraphRoute
 @Serializable
 data object TransactionListRoute
 
-@Suppress("UNUSED_PARAMETER") // Wired when the list screen lands (US2).
+@Suppress("UNUSED_PARAMETER") // navController is kept for the graph contract; no in-graph navigation yet.
 fun NavGraphBuilder.transactionsGraph(
     navController: NavController,
     onNavigateBack: () -> Unit,
 ) {
     navigation<TransactionsGraphRoute>(startDestination = TransactionListRoute) {
         composable<TransactionListRoute> {
-            // TransactionListRoot is wired in User Story 2 (T066).
+            TransactionListRoot(onNavigateBack = onNavigateBack)
         }
     }
 }

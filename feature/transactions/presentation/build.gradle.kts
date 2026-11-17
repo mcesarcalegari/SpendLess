@@ -20,3 +20,7 @@ dependencies {
     testImplementation(testFixtures(projects.feature.transactions.domain))
     androidTestImplementation(testFixtures(projects.feature.transactions.domain))
 }
+
+dependencies {
+    androidTestImplementation(libs.assertk)
+}

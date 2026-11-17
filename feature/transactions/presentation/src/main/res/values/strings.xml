@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- English only (contracts/transactions-ui.md "Strings"). -->
+<resources>
+    <!-- Screen titles -->
+    <string name="all_transactions">All Transactions</string>
+    <string name="create_transaction">Create Transaction</string>
+
+    <!-- Create sheet -->
+    <string name="expense">Expense</string>
+    <string name="income">Income</string>
+    <string name="receiver">Receiver</string>
+    <string name="sender">Sender</string>
+    <string name="add_note">Add Note</string>
+    <string name="create">Create</string>
+
+    <!-- Repeat options -->
+    <string name="repeat_does_not_repeat">Does not repeat</string>
+    <string name="repeat_daily">Daily</string>
+    <string name="repeat_weekly">Weekly</string>
+    <string name="repeat_monthly">Monthly</string>
+    <string name="repeat_yearly">Yearly</string>
+    <string name="repeat_weekly_on">Weekly on %1$s</string>
+    <string name="repeat_monthly_on_the">Monthly on the %1$s</string>
+    <string name="repeat_yearly_on">Yearly on %1$s</string>
+
+    <!-- Expense categories (FR-026) -->
+    <string name="category_clothing_and_accessories">Clothing &amp; Accessories</string>
+    <string name="category_education">Education</string>
+    <string name="category_entertainment">Entertainment</string>
+    <string name="category_food_and_groceries">Food &amp; Groceries</string>
+    <string name="category_health_and_wellness">Health &amp; Wellness</string>
+    <string name="category_home">Home</string>
+    <string name="category_other">Other</string>
+
+    <!-- Day headers (FR-003) -->
+    <string name="today">TODAY</string>
+    <string name="yesterday">YESTERDAY</string>
+
+    <!-- Stop repeating (FR-037, FR-038) -->
+    <string name="stop_repeating">Stop repeating</string>
+    <string name="stop_repeating_title">Stop repeating %1$s?</string>
+    <string name="stop">Stop</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_add_transaction">Add transaction</string>
+    <string name="cd_close">Close</string>
+    <string name="cd_show_note">Show note</string>
+    <string name="cd_hide_note">Hide note</string>
+</resources>
