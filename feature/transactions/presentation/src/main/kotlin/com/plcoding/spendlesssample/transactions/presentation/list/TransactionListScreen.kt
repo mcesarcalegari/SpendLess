@@ -1,6 +1,18 @@
 package com.plcoding.spendlesssample.transactions.presentation.list
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.rememberCoroutineScope
+import com.plcoding.spendlesssample.transactions.presentation.create.CreateTransactionAction
+import com.plcoding.spendlesssample.transactions.presentation.create.CreateTransactionRoot
+import com.plcoding.spendlesssample.transactions.presentation.create.CreateTransactionViewModel
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +55,11 @@ private val GroupBottomPadding = 8.dp
 /** Scaffold places the FAB 16dp from the end; Figma has it at 24dp (`2417:12067`). */
 private val FabExtraEndPadding = 8.dp
 
+/** Create sheet tokens (`2415:6631`, research R7). */
+private val SheetTopGap = 8.dp
+private val SheetCornerRadius = 28.dp
+private const val SheetScrimAlpha = 0.32f
+
 /**
  * Hosts [TransactionListScreen] with its ViewModel. Back goes straight to [onNavigateBack].
  *
@@ -52,15 +69,65 @@ private val FabExtraEndPadding = 8.dp
 fun TransactionListRoot(
     onNavigateBack: () -> Unit,
     viewModel: TransactionListViewModel = koinViewModel(),
+    createViewModel: CreateTransactionViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     TransactionListScreen(
         state = state,
         onAction = viewModel::onAction,
         onNavigateBack = onNavigateBack,
-        // The create sheet is hosted here once User Story 1 builds it.
-        createSheetContent = {},
+        createSheetContent = {
+            CreateTransactionSheet(
+                createViewModel = createViewModel,
+                onDismissed = { viewModel.onAction(TransactionListAction.OnCreateSheetDismiss) },
+            )
+        },
     )
+}
+
+/**
+ * The create sheet (research R7): an M3 modal sheet in `surfaceContainerLow` with 28dp top
+ * corners, no drag handle, an `onBackground`@32% scrim, never half-expanded, and 8dp below the
+ * status bar. Its insets are zero and it has no IME padding, so the keyboard overlays its lower
+ * part instead of reflowing it (`2415:6533`).
+ *
+ * [createViewModel] belongs to the list's nav entry, so every way of closing resets its form:
+ * ✕ (in [CreateTransactionRoot]), scrim tap, swipe and back here, and `Created` in the ViewModel.
+ *
+ * Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-6629
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateTransactionSheet(
+    createViewModel: CreateTransactionViewModel,
+    onDismissed: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val hideThenDismiss: () -> Unit = {
+        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissed() }
+    }
+    ModalBottomSheet(
+        onDismissRequest = {
+            createViewModel.onAction(CreateTransactionAction.OnCloseClick)
+            onDismissed()
+        },
+        modifier = Modifier
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(top = SheetTopGap),
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = SheetCornerRadius, topEnd = SheetCornerRadius),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        scrimColor = MaterialTheme.colorScheme.onBackground.copy(alpha = SheetScrimAlpha),
+        dragHandle = null,
+        contentWindowInsets = { WindowInsets(0) },
+    ) {
+        CreateTransactionRoot(
+            onClose = hideThenDismiss,
+            onCreated = hideThenDismiss,
+            viewModel = createViewModel,
+        )
+    }
 }
 
 /**

@@ -31,6 +31,11 @@ import com.plcoding.spendlesssample.transactions.domain.usecase.ObserveTransacti
 import com.plcoding.spendlesssample.transactions.presentation.R
 import com.plcoding.spendlesssample.transactions.presentation.format.DayHeaderFormatter
 import com.plcoding.spendlesssample.transactions.presentation.mapper.TransactionUiMapper
+import com.plcoding.spendlesssample.core.presentation.format.AmountInputParser
+import com.plcoding.spendlesssample.transactions.domain.TransactionValidator
+import com.plcoding.spendlesssample.transactions.domain.usecase.CreateTransaction
+import com.plcoding.spendlesssample.transactions.presentation.create.CreateTransactionViewModel
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -50,6 +55,7 @@ class TransactionListScreenTest {
     private val today = LocalDate.of(2026, 1, 15)
     private lateinit var dataSource: FakeTransactionLocalDataSource
     private lateinit var viewModel: TransactionListViewModel
+    private lateinit var createViewModel: CreateTransactionViewModel
     private var backCalls = 0
 
     @Before
@@ -60,6 +66,15 @@ class TransactionListScreenTest {
             currentDateProvider = FakeCurrentDateProvider(today),
             preferencesSource = FakeAmountFormatPreferencesSource(),
             mapper = TransactionUiMapper(AmountFormatter(), DayHeaderFormatter()),
+            savedStateHandle = SavedStateHandle(),
+        )
+        // The list Root hosts the create sheet; give it a real ViewModel so no Koin is needed.
+        createViewModel = CreateTransactionViewModel(
+            validator = TransactionValidator(Clock.systemUTC()),
+            createTransaction = CreateTransaction(dataSource),
+            preferencesSource = FakeAmountFormatPreferencesSource(),
+            amountInputParser = AmountInputParser(),
+            amountFormatter = AmountFormatter(),
             savedStateHandle = SavedStateHandle(),
         )
     }
@@ -92,7 +107,11 @@ class TransactionListScreenTest {
     private fun setContent() {
         composeTestRule.setContent {
             SpendLessTheme {
-                TransactionListRoot(onNavigateBack = { backCalls++ }, viewModel = viewModel)
+                TransactionListRoot(
+                    onNavigateBack = { backCalls++ },
+                    viewModel = viewModel,
+                    createViewModel = createViewModel,
+                )
             }
         }
         composeTestRule.waitForIdle()
