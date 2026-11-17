@@ -11,7 +11,7 @@ Build **SpendLess**, a personal Android app for tracking income and expenses wit
 ## 2. Context
 
 - **Project:** `com.plcoding.spendlesssample` (will be renamed when the multi-module split lands).
-- **Stack:** Kotlin 2.2.10, AGP 9.1.1, Gradle 9.3.1, Jetpack Compose (BOM 2024.09.00), Material3, version catalog (`gradle/libs.versions.toml`), JDK 11.
+- **Stack:** Kotlin 2.2.10, AGP 9.1.1, Gradle 9.3.1, Jetpack Compose (BOM 2026.06.01), Material3, version catalog (`gradle/libs.versions.toml`), JDK 11.
 - **Min/Target/Compile SDK:** 26 / 36 / 36.
 - **Distribution:** Offline-first. There is **no remote backend** until one is explicitly added — agents must not invent network calls, sync workers, or auth flows that assume a server.
 - **Architecture (mandatory from day one):** Feature-layered Clean Architecture — `:app` assembles `:core:*` and `:feature:<name>:presentation|domain|data`. Domain depends on nothing. Features never depend on each other; cross-feature shared code lives in `:core:domain` or `:core:presentation`. See the `android-module-structure` skill for the canonical layout.
@@ -103,8 +103,8 @@ If you cannot run the build (e.g., environment missing the Android SDK), say so 
 
 **Figma is the single source of truth for every visual decision.** Never improvise colors, spacing, sizes, typography, iconography, or component shapes from memory.
 
-- Project Figma file: `https://www.figma.com/design/ftCIcpiLxrMhckuzDmYQWL/SpendLess`
-- Anchor entry point: `?node-id=401-935` (`fileKey=ftCIcpiLxrMhckuzDmYQWL`, `nodeId=401:935`).
+- Project Figma file: `https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess`
+- Anchor entry point: `?node-id=401-935` (`fileKey=xSFwRCFwe13SK2kAq85SLj`, `nodeId=401:935`).
 - For any UI work, **first** call `mcp__plugin_figma_figma__get_design_context` (and `get_screenshot` / `get_metadata` / `get_variable_defs` as needed) on the relevant node to pull the live design context. Treat the returned React+Tailwind output as a *reference*; translate to Compose using the existing Material3 theme and the project's design tokens.
 - For icons, follow `figma-to-android-vector` — pull the actual SVG and copy `d` verbatim into `pathData`.
 - Do **not** upload code, screenshots, or anything from this repo back into Figma unless the user explicitly asks.

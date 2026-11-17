@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    icon/Notes
+    Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess?node-id=423-4875
+    Path data copied verbatim from the Figma SVG export. The 24x24 icon frame is the viewport.
+    Single colour; tinted at the call site.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#1B1B1C"
+        android:pathData="M3 18H15V16H3V18ZM3 6V8H21V6H3ZM3 13H21V11H3V13Z" />
+</vector>
