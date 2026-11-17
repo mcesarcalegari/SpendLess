@@ -68,5 +68,24 @@ Expected deviations to ignore, all documented in plan Complexity Tracking:
 ```bash
 adb shell run-as com.plcoding.spendlesssample ls databases/        # DB present
 adb shell run-as com.plcoding.spendlesssample head -c 16 databases/spendless.db | xxd   # NOT "SQLite format 3"
-adb logcat -d | grep -iE "netflix|15\.99|gym"                       # no matches
+adb logcat -c                                                       # after any instrumented run, before the manual scenarios
+adb logcat -d -v raw | grep -v "adbd service requested" | grep -iE "netflix|15\.99|gym"   # no matches
 ```
+
+- `-v raw` prints message bodies only. Without it, timestamps such as `11:52:15.998` match `15\.99`.
+- `adbd service requested` lines echo your own `adb shell input text …` commands, not app logs.
+- Clear logcat first: instrumented test names (for example `…StopRepeatingGym…`) also match.
+
+## 6. Performance (SC-005)
+
+`TransactionListScrollTest` (instrumented) seeds 1,000 transactions over 12 months into the fake data source. It scrolls to the last item, then back to the top.
+
+Recorded 2026-11-17 (T137):
+
+- Both tests are green on the Pixel 10 AVD (API 37).
+- The list's `stickyHeader` / `items` set a `key` and `contentType`.
+- `TransactionListState`, `DayGroupUi`, `TransactionUi` and `StopConfirmationUi` are `@Immutable`.
+- Compose compiler reports (via a temporary init script, not checked in) flagged one unstable parameter on the list path: `TransactionList(groups: List<DayGroupUi>)`. It is now `ImmutableList`. The only unstable parameters left are ViewModels on Root composables and a preview-only helper.
+- **Not run (owner decision 2026-11-17):** the release-build `dumpsys gfxinfo` jank measurement.
+  - Release has no signing config.
+  - On 2026-11-16 the owner ruled out a seeder for the encrypted DB.
