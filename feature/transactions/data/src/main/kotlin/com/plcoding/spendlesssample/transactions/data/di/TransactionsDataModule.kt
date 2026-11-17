@@ -6,7 +6,9 @@ import com.plcoding.spendlesssample.transactions.domain.TransactionLocalDataSour
 import com.plcoding.spendlesssample.transactions.domain.TransactionValidator
 import com.plcoding.spendlesssample.transactions.domain.usecase.CreateTransaction
 import com.plcoding.spendlesssample.transactions.domain.usecase.MaterializeDueOccurrences
+import com.plcoding.spendlesssample.transactions.domain.usecase.ObserveRunningSeriesIds
 import com.plcoding.spendlesssample.transactions.domain.usecase.ObserveTransactions
+import com.plcoding.spendlesssample.transactions.domain.usecase.StopRecurringSeries
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -19,8 +21,10 @@ val transactionsDataModule = module {
 /** Use cases of the transactions domain. The domain module itself stays Koin-free. */
 val transactionsDomainModule = module {
     factoryOf(::ObserveTransactions)
+    factoryOf(::ObserveRunningSeriesIds)
     factoryOf(::TransactionValidator)
     factoryOf(::CreateTransaction)
     // RecurrenceSchedule is an object, so it is passed directly rather than resolved by Koin.
     factory { MaterializeDueOccurrences(dataSource = get(), schedule = RecurrenceSchedule, clock = get()) }
+    factoryOf(::StopRecurringSeries)
 }
