@@ -26,6 +26,9 @@ class ComposeConventionPlugin : Plugin<Project> {
                 "debugImplementation"(libs.library("androidx-compose-ui-test-manifest"))
                 "androidTestImplementation"(bom)
                 "androidTestImplementation"(libs.library("androidx-compose-ui-test-junit4"))
+                // ui-test-junit4 pulls espresso-core 3.5.0, which calls InputManager.getInstance(),
+                // removed on newer Android; the catalog version replaces it.
+                "androidTestImplementation"(libs.library("androidx-espresso-core"))
             }
         }
     }
