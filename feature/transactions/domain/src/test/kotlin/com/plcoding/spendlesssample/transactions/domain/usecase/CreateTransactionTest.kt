@@ -54,6 +54,37 @@ class CreateTransactionTest {
     }
 
     @Test
+    fun `a repeating transaction is stored as a series original with its own id as series id`() = runTest {
+        val monthly = transaction.copy(repeat = RepeatFrequency.MONTHLY)
+
+        val result = createTransaction(monthly)
+
+        assertThat(result).isEqualTo(Result.Success(1L))
+        assertThat(dataSource.storedTransactions).containsExactly(monthly.copy(id = 1, seriesId = 1))
+        assertThat(dataSource.storedSeries.map { it.seriesId to it.frequency })
+            .containsExactly(1L to RepeatFrequency.MONTHLY)
+    }
+
+    @Test
+    fun `every repeating frequency starts a series with that frequency`() = runTest {
+        val frequencies = RepeatFrequency.entries - RepeatFrequency.DOES_NOT_REPEAT
+
+        frequencies.forEach { createTransaction(transaction.copy(repeat = it)) }
+
+        assertThat(dataSource.storedSeries.map { it.frequency }).containsExactly(*frequencies.toTypedArray())
+    }
+
+    @Test
+    fun `a storage error on a repeating transaction is returned unchanged`() = runTest {
+        dataSource.error = DataError.Local.DISK_FULL
+
+        val result = createTransaction(transaction.copy(repeat = RepeatFrequency.DAILY))
+
+        assertThat(result).isEqualTo(Result.Error(DataError.Local.DISK_FULL))
+        assertThat(dataSource.storedSeries).isEmpty()
+    }
+
+    @Test
     fun `DISK_FULL from the data source is returned unchanged`() = runTest {
         dataSource.error = DataError.Local.DISK_FULL
 
