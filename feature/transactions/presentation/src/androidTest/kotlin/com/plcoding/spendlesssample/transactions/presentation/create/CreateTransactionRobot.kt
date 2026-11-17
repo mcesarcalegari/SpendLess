@@ -54,6 +54,31 @@ class CreateTransactionRobot(
         rule.onNodeWithText("00.00").assertIsDisplayed()
     }
 
+    fun selectIncome() = apply {
+        rule.onNodeWithText(string(R.string.income)).performClick()
+        rule.waitForIdle()
+    }
+
+    fun selectExpense() = apply {
+        rule.onNodeWithText(string(R.string.expense)).performClick()
+        rule.waitForIdle()
+    }
+
+    /**
+     * User Story 4: `$` prefix and no category Select. The "Sender" placeholder is drawn only while
+     * the name is empty, so it is checked only when [isNameEmpty].
+     */
+    fun assertIncomeForm(isNameEmpty: Boolean = true) = apply {
+        if (isNameEmpty) rule.onNodeWithText(string(R.string.sender)).assertIsDisplayed()
+        rule.onNodeWithText("$").assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.receiver)).assertDoesNotExist()
+        rule.onNodeWithText("-$").assertDoesNotExist()
+        rule.onNodeWithText(string(R.string.category_other)).assertDoesNotExist()
+    }
+
+    /** Top of the Create button in root coordinates, to check it does not move between types. */
+    fun createButtonTop(): Float = createButton.fetchSemanticsNode().boundsInRoot.top
+
     fun assertAmountFocused() = apply {
         rule.waitUntil(timeoutMillis = 2_000) {
             runCatching { amountField.assertIsFocused() }.isSuccess
@@ -74,6 +99,18 @@ class CreateTransactionRobot(
         rule.waitUntilExactlyOneExists(hasText(string(category)))
         rule.onNodeWithText(string(category)).performClick()
         rule.waitForIdle()
+    }
+
+    /** Opens the repeat field, which shows [fieldLabel], and picks the option labelled [option]. */
+    fun pickRepeat(fieldLabel: String, option: String) = apply {
+        openRepeatList(fieldLabel)
+        rule.onNodeWithText(option).performClick()
+        rule.waitForIdle()
+    }
+
+    fun openRepeatList(fieldLabel: String) = apply {
+        rule.onNodeWithText(fieldLabel).performClick()
+        rule.waitUntilExactlyOneExists(hasText(string(R.string.repeat_daily)))
     }
 
     fun addNote(note: String) = apply {
@@ -109,6 +146,14 @@ class CreateTransactionRobot(
         rule.onNodeWithText(label).assertIsDisplayed()
         rule.onNodeWithText(amount).assertIsDisplayed()
         assertThat(top(string(R.string.today))).isLessThan(top(name))
+    }
+
+    /** The new row carries the note badge (FR-006), and tapping it shows [note] in full. */
+    fun assertRowShowsNote(note: String) = apply {
+        rule.onNodeWithContentDescription(string(R.string.cd_show_note)).assertIsDisplayed().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(note).assertIsDisplayed()
+        rule.onNodeWithContentDescription(string(R.string.cd_hide_note)).assertIsDisplayed()
     }
 
     private fun top(text: String) = rule.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plcoding.spendlesssample.core.designsystem.component.SegmentedOption
+import com.plcoding.spendlesssample.core.designsystem.component.SelectListItemStyle
 import com.plcoding.spendlesssample.core.designsystem.component.SelectOption
 import com.plcoding.spendlesssample.core.designsystem.component.SpendLessButton
 import com.plcoding.spendlesssample.core.designsystem.component.SpendLessSegmentedButton
@@ -41,12 +41,15 @@ import com.plcoding.spendlesssample.core.presentation.ObserveAsEvents
 import com.plcoding.spendlesssample.core.presentation.R as CoreR
 import com.plcoding.spendlesssample.core.presentation.UiText
 import com.plcoding.spendlesssample.transactions.domain.model.ExpenseCategory
+import com.plcoding.spendlesssample.transactions.domain.model.RepeatFrequency
 import com.plcoding.spendlesssample.transactions.domain.model.TransactionType
 import com.plcoding.spendlesssample.transactions.presentation.R
 import com.plcoding.spendlesssample.transactions.presentation.create.component.AmountInput
 import com.plcoding.spendlesssample.transactions.presentation.create.component.CounterpartyInput
 import com.plcoding.spendlesssample.transactions.presentation.create.component.NoteInput
+import com.plcoding.spendlesssample.transactions.presentation.format.RepeatLabelFormatter
 import com.plcoding.spendlesssample.transactions.presentation.mapper.CategoryUiMapper
+import java.time.LocalDate
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -63,8 +66,10 @@ private val InputsGap = 12.dp
 private val InputsToFilters = 32.dp
 private val FiltersHeight = 104.dp
 private val FiltersGap = 8.dp
-private val SelectHeight = 48.dp
 private val FiltersToCreate = 12.dp
+
+/** Repeat Select (`2415:11244`): 🔄 in a `tertiaryContainer` tile. */
+private const val RepeatEmoji = "🔄"
 
 /** Same gap as the DS Text field's supporting text. */
 private val ErrorTopPadding = 7.dp
@@ -115,6 +120,7 @@ fun CreateTransactionRoot(
  * Figma (filled, repeat list open): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-7873
  * Figma (filled): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2443-9436
  * Figma (filled, income): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-8542
+ * Figma (filled, income, sheet): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-8638
  * Figma (title bar): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-6632
  * Figma (type toggle): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2417-12817
  * Figma (Create, disabled): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=406-271
@@ -206,6 +212,19 @@ fun CreateTransactionScreen(
                     }
                 },
                 onCategoryPick = { onAction(CreateTransactionAction.OnCategoryPick(it)) },
+                repeat = state.repeat,
+                repeatFieldLabel = state.repeatFieldLabel.asString(),
+                repeatOptions = state.repeatOptions,
+                isRepeatOpen = state.openSelect == OpenSelect.REPEAT,
+                onRepeatExpandedChange = { expand ->
+                    if (expand) {
+                        focusManager.clearFocus()
+                        onAction(CreateTransactionAction.OnRepeatSelectClick)
+                    } else {
+                        onAction(CreateTransactionAction.OnSelectDismiss)
+                    }
+                },
+                onRepeatPick = { onAction(CreateTransactionAction.OnRepeatPick(it)) },
             )
             Spacer(modifier = Modifier.height(FiltersToCreate))
             SpendLessButton(
@@ -229,7 +248,8 @@ fun CreateTransactionScreen(
 }
 
 /**
- * Expense (`TrendingDown`) / Income (`TrendingUp`) toggle (FR-011).
+ * Expense (`TrendingDown`) / Income (`TrendingUp`) toggle (FR-011). Income switches the name
+ * placeholder to "Sender", the amount sign to `$` in `success` and hides the category (User Story 4).
  *
  * Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2417-12817
  */
@@ -253,12 +273,16 @@ private fun TypeToggle(
 
 /**
  * The 104dp filters block, content bottom-aligned with an 8dp gap (research R7): the category
- * Select on top and the 48dp repeat slot below it. The repeat Select fills that slot in User
- * Story 5; until then the slot is reserved so Create keeps its position. For income the category
- * is hidden and the block keeps its height, so nothing jumps when the type changes (`2415:8638`).
+ * Select on top and the repeat Select below it. For income the category is hidden and the block
+ * keeps its height, so the repeat field and Create stay put when the type changes (`2415:8638`).
+ *
+ * The repeat field shows the short frequency name ("Weekly", FR-020); its list shows the long
+ * labels for today ("Weekly on Monday", FR-019) with the current one ticked.
  *
  * Figma (closed): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-10578
  * Figma (category list open): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-9786
+ * Figma (repeat, closed): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-11244
+ * Figma (repeat, open): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-11280
  */
 @Composable
 private fun FiltersBlock(
@@ -267,6 +291,12 @@ private fun FiltersBlock(
     isCategoryOpen: Boolean,
     onCategoryExpandedChange: (Boolean) -> Unit,
     onCategoryPick: (ExpenseCategory) -> Unit,
+    repeat: RepeatFrequency,
+    repeatFieldLabel: String,
+    repeatOptions: ImmutableList<RepeatOptionUi>,
+    isRepeatOpen: Boolean,
+    onRepeatExpandedChange: (Boolean) -> Unit,
+    onRepeatPick: (RepeatFrequency) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -288,10 +318,26 @@ private fun FiltersBlock(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        // Repeat slot, filled by the repeat Select in User Story 5.
-        Spacer(modifier = Modifier.size(width = 0.dp, height = SelectHeight))
+        SpendLessSelect(
+            options = repeatSelectOptions(repeatOptions),
+            selected = repeat,
+            selectedText = repeatFieldLabel,
+            isExpanded = isRepeatOpen,
+            onExpandedChange = onRepeatExpandedChange,
+            onSelect = onRepeatPick,
+            fieldLeadingEmoji = RepeatEmoji,
+            leadingTileColor = MaterialTheme.colorScheme.tertiaryContainer,
+            listItemStyle = SelectListItemStyle.TextIndented,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
+
+@Composable
+private fun repeatSelectOptions(
+    options: ImmutableList<RepeatOptionUi>,
+): ImmutableList<SelectOption<RepeatFrequency>> =
+    options.map { SelectOption(value = it.frequency, label = it.label.asString()) }.toImmutableList()
 
 @Composable
 private fun categoryOptions(): ImmutableList<SelectOption<ExpenseCategory>> =
@@ -325,13 +371,26 @@ private fun ScreenPreview(state: CreateTransactionState) {
     }
 }
 
-private val FilledState = CreateTransactionState(
+/** Monday Feb 14 (2028): the date behind the Figma list labels ("Monthly on the 14th"). */
+private val PreviewFormatter = RepeatLabelFormatter()
+private val PreviewRepeatOptions = PreviewFormatter.options(LocalDate.of(2028, 2, 14))
+
+/** Fresh sheet state as the ViewModel builds it: repeat options for today, field "Does not repeat". */
+private val EmptyState = CreateTransactionState(repeatOptions = PreviewRepeatOptions)
+
+private fun CreateTransactionState.withRepeat(frequency: RepeatFrequency) = copy(
+    repeat = frequency,
+    repeatFieldLabel = PreviewFormatter.shortLabel(frequency),
+)
+
+/** The filled frames (`2443:9532`, `2415:7969`) show Entertainment and Weekly. */
+private val FilledState = EmptyState.copy(
     name = "Netflix",
     amountInput = "100.00",
     amountParts = AmountPartsUi(number = "100.00", isPlaceholder = false),
     category = ExpenseCategory.ENTERTAINMENT,
     isCreateEnabled = true,
-)
+).withRepeat(RepeatFrequency.WEEKLY)
 
 /**
  * Create is disabled on the empty form (F6).
@@ -340,13 +399,27 @@ private val FilledState = CreateTransactionState(
  */
 @Preview(widthDp = 412, heightDp = 832)
 @Composable
-private fun CreateTransactionScreenEmptyPreview() = ScreenPreview(CreateTransactionState())
+private fun CreateTransactionScreenEmptyPreview() = ScreenPreview(EmptyState)
+
+/**
+ * Empty, with the parentheses negative style (FR-032): `($` and `)` in `error` around the `00.00`
+ * placeholder; everything else as the empty sheet, Create disabled (F6). The parts are what
+ * `AmountFormatter.parts` builds for these preferences; preview state is static.
+ *
+ * Figma (sheet): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-11055
+ * Figma (screen): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-10959
+ */
+@Preview(widthDp = 412, heightDp = 832)
+@Composable
+private fun CreateTransactionScreenEmptyParenthesesPreview() = ScreenPreview(
+    EmptyState.copy(amountParts = AmountPartsUi(prefix = "($", suffix = ")")),
+)
 
 /** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-7314 */
 @Preview(widthDp = 412, heightDp = 832)
 @Composable
 private fun CreateTransactionScreenTypingNamePreview() =
-    ScreenPreview(CreateTransactionState(name = "Netflix"))
+    ScreenPreview(EmptyState.copy(name = "Netflix"))
 
 /**
  * The list opens in a popup, which a static preview may not draw; `SpendLessSelect` previews the
@@ -357,21 +430,69 @@ private fun CreateTransactionScreenTypingNamePreview() =
 @Preview(widthDp = 412, heightDp = 832)
 @Composable
 private fun CreateTransactionScreenCategoryOpenPreview() = ScreenPreview(
-    CreateTransactionState(
+    EmptyState.copy(
         name = "Netflix",
         category = ExpenseCategory.ENTERTAINMENT,
         openSelect = OpenSelect.CATEGORY,
     ),
 )
 
-/**
- * The repeat field is added in User Story 5, so its slot is empty here.
- *
- * Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2443-9532
- */
+/** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2443-9532 */
 @Preview(widthDp = 412, heightDp = 832)
 @Composable
 private fun CreateTransactionScreenFilledPreview() = ScreenPreview(FilledState)
+
+/**
+ * Filled, with the repeat list open under the Weekly field and "Weekly on Monday" ticked. A static
+ * render does not draw the list's popup (checked 2026-11-17); the DS
+ * `SpendLessSelectListTextIndentedPreview` shows the list, and the open state is verified on a device.
+ *
+ * Figma (screen): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-7873
+ * Figma (sheet): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-7969
+ */
+@Preview(widthDp = 412, heightDp = 832)
+@Composable
+private fun CreateTransactionScreenRepeatOpenPreview() =
+    ScreenPreview(FilledState.copy(openSelect = OpenSelect.REPEAT))
+
+/**
+ * Income with nothing typed: "Sender" placeholder, `$` in `success`, the category hidden while the
+ * repeat slot and Create keep their place. Figma has no empty-income frame; the filled-income sheet
+ * below fixes the layout.
+ *
+ * Figma (filled, income): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-8638
+ */
+@Preview(widthDp = 412, heightDp = 832)
+@Composable
+private fun CreateTransactionScreenEmptyIncomePreview() = ScreenPreview(
+    EmptyState.copy(
+        type = TransactionType.INCOME,
+        amountParts = AmountPartsUi(prefix = "$", signTone = TransactionType.INCOME),
+    ),
+)
+
+/**
+ * Rick, $100.00, Weekly; the category is hidden.
+ *
+ * Figma (sheet): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-8638
+ * Figma (screen): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-8542
+ */
+@Preview(widthDp = 412, heightDp = 832)
+@Composable
+private fun CreateTransactionScreenFilledIncomePreview() = ScreenPreview(
+    EmptyState.copy(
+        type = TransactionType.INCOME,
+        name = "Rick",
+        amountInput = "100.00",
+        amountParts = AmountPartsUi(
+            prefix = "$",
+            number = "100.00",
+            isPlaceholder = false,
+            signTone = TransactionType.INCOME,
+        ),
+        isCreateEnabled = true,
+    ).withRepeat(RepeatFrequency.WEEKLY),
+)
 
 /** No Figma frame (research R8). */
 @Preview(widthDp = 412, heightDp = 832)
@@ -387,33 +508,75 @@ private fun CreateTransactionScreenStorageErrorPreview() = ScreenPreview(
     FilledState.copy(error = UiText.StringResource(CoreR.string.error_disk_full)),
 )
 
-/** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-10578 */
-@Preview(widthDp = 412)
 @Composable
-private fun FiltersBlockClosedPreview() = SheetPreview {
+private fun FiltersBlockPreview(
+    category: ExpenseCategory = ExpenseCategory.OTHER,
+    isCategoryVisible: Boolean = true,
+    repeat: RepeatFrequency = RepeatFrequency.DOES_NOT_REPEAT,
+    isRepeatOpen: Boolean = false,
+) = SheetPreview {
     FiltersBlock(
-        category = ExpenseCategory.OTHER,
-        isCategoryVisible = true,
+        category = category,
+        isCategoryVisible = isCategoryVisible,
         isCategoryOpen = false,
         onCategoryExpandedChange = {},
         onCategoryPick = {},
+        repeat = repeat,
+        repeatFieldLabel = PreviewFormatter.shortLabel(repeat).asString(),
+        repeatOptions = PreviewRepeatOptions,
+        isRepeatOpen = isRepeatOpen,
+        onRepeatExpandedChange = {},
+        onRepeatPick = {},
         modifier = Modifier.padding(16.dp),
     )
 }
 
+/** Defaults: Other and Does not repeat. Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-10578 */
+@Preview(widthDp = 412)
+@Composable
+private fun FiltersBlockClosedPreview() = FiltersBlockPreview()
+
 /** Figma (income sheet): https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-8638 */
 @Preview(widthDp = 412)
 @Composable
-private fun FiltersBlockCategoryHiddenPreview() = SheetPreview {
-    FiltersBlock(
-        category = ExpenseCategory.OTHER,
-        isCategoryVisible = false,
-        isCategoryOpen = false,
-        onCategoryExpandedChange = {},
-        onCategoryPick = {},
-        modifier = Modifier.padding(16.dp),
-    )
-}
+private fun FiltersBlockCategoryHiddenPreview() =
+    FiltersBlockPreview(isCategoryVisible = false, repeat = RepeatFrequency.WEEKLY)
+
+/** No Figma frame for this label; the field shows the short name (FR-020). */
+@Preview(widthDp = 412)
+@Composable
+private fun FiltersBlockRepeatDailyPreview() = FiltersBlockPreview(repeat = RepeatFrequency.DAILY)
+
+/** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2443-9532 */
+@Preview(widthDp = 412)
+@Composable
+private fun FiltersBlockRepeatWeeklyPreview() =
+    FiltersBlockPreview(category = ExpenseCategory.ENTERTAINMENT, repeat = RepeatFrequency.WEEKLY)
+
+/** No Figma frame for this label; the field shows the short name (FR-020). */
+@Preview(widthDp = 412)
+@Composable
+private fun FiltersBlockRepeatMonthlyPreview() = FiltersBlockPreview(repeat = RepeatFrequency.MONTHLY)
+
+/** No Figma frame for this label; the field shows the short name (FR-020). */
+@Preview(widthDp = 412)
+@Composable
+private fun FiltersBlockRepeatYearlyPreview() = FiltersBlockPreview(repeat = RepeatFrequency.YEARLY)
+
+/**
+ * The repeat list open with Weekly ticked. A static render does not draw the popup (checked
+ * 2026-11-17), so this shows the anchors only; the DS `SpendLessSelectListTextIndentedPreview`
+ * shows the list itself, and the open state is verified on a device.
+ *
+ * Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-11280
+ */
+@Preview(widthDp = 412)
+@Composable
+private fun FiltersBlockRepeatListPreview() = FiltersBlockPreview(
+    category = ExpenseCategory.ENTERTAINMENT,
+    repeat = RepeatFrequency.WEEKLY,
+    isRepeatOpen = true,
+)
 
 /** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2417-12817 */
 @Preview(widthDp = 412)

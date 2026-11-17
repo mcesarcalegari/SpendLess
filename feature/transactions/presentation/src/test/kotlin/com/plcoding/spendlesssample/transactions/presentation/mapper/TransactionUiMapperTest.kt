@@ -5,6 +5,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import assertk.assertions.isNull
 import com.plcoding.spendlesssample.core.domain.format.AmountFormatPreferences
 import com.plcoding.spendlesssample.core.domain.format.NegativeStyle
@@ -89,6 +90,37 @@ class TransactionUiMapperTest {
         assertThat(ui.note).isNull()
         assertThat(ui.seriesId).isEqualTo(4L)
         assertThat(ui.isInRunningSeries).isFalse()
+    }
+
+    @Test
+    fun `a row whose series is running is marked as in a running series`() {
+        val original = mapper.toUi(tx(4, today.atTime(9, 0), seriesId = 4), prefs, runningSeriesIds = setOf(4L))
+        val occurrence = mapper.toUi(tx(7, today.atTime(9, 0), seriesId = 4), prefs, runningSeriesIds = setOf(4L))
+
+        assertThat(original.isInRunningSeries).isTrue()
+        assertThat(occurrence.isInRunningSeries).isTrue()
+    }
+
+    @Test
+    fun `a stopped series and a one-time row are not in a running series`() {
+        val stopped = mapper.toUi(tx(4, today.atTime(9, 0), seriesId = 4), prefs, runningSeriesIds = setOf(9L))
+        val oneTime = mapper.toUi(tx(5, today.atTime(9, 0), seriesId = null), prefs, runningSeriesIds = setOf(5L))
+
+        assertThat(stopped.isInRunningSeries).isFalse()
+        assertThat(oneTime.isInRunningSeries).isFalse()
+    }
+
+    @Test
+    fun `groups mark rows of running series`() {
+        val groups = mapper.toGroups(
+            listOf(tx(1, today.atTime(9, 0), seriesId = 1), tx(2, today.atTime(10, 0))),
+            today,
+            prefs,
+            runningSeriesIds = setOf(1L),
+        )
+
+        assertThat(groups.single().items.map { it.id to it.isInRunningSeries })
+            .containsExactly(2L to false, 1L to true)
     }
 
     @Test

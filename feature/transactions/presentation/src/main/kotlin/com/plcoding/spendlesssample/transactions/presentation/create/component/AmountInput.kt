@@ -209,6 +209,21 @@ private fun AmountInputCommaDecimalPreview() = AmountInputPreview(
     parts = AmountPartsUi(number = "1.234,5", isPlaceholder = false),
 )
 
+/** Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2415-11064 */
+@Preview(widthDp = 380)
+@Composable
+private fun AmountInputEmptyParenthesesPreview() = AmountInputPreview(
+    value = "",
+    parts = AmountPartsUi(prefix = "($", suffix = ")"),
+)
+
+@Preview(widthDp = 380)
+@Composable
+private fun AmountInputFilledParenthesesPreview() = AmountInputPreview(
+    value = "1234.5",
+    parts = AmountPartsUi(prefix = "($", number = "1,234.5", suffix = ")", isPlaceholder = false),
+)
+
 @Preview(widthDp = 380)
 @Composable
 private fun AmountInputCommaDecimalPlaceholderPreview() = AmountInputPreview(

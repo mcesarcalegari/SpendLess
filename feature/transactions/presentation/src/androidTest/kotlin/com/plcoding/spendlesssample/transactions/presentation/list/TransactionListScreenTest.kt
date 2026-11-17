@@ -2,11 +2,18 @@ package com.plcoding.spendlesssample.transactions.presentation.list
 
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTouchInput
+import assertk.assertions.isNull
+import com.plcoding.spendlesssample.transactions.presentation.create.CreateTransactionRobot
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -27,9 +34,12 @@ import com.plcoding.spendlesssample.transactions.domain.model.ExpenseCategory
 import com.plcoding.spendlesssample.transactions.domain.model.RepeatFrequency
 import com.plcoding.spendlesssample.transactions.domain.model.Transaction
 import com.plcoding.spendlesssample.transactions.domain.model.TransactionType
+import com.plcoding.spendlesssample.transactions.domain.usecase.ObserveRunningSeriesIds
 import com.plcoding.spendlesssample.transactions.domain.usecase.ObserveTransactions
+import com.plcoding.spendlesssample.transactions.domain.usecase.StopRecurringSeries
 import com.plcoding.spendlesssample.transactions.presentation.R
 import com.plcoding.spendlesssample.transactions.presentation.format.DayHeaderFormatter
+import com.plcoding.spendlesssample.transactions.presentation.format.RepeatLabelFormatter
 import com.plcoding.spendlesssample.transactions.presentation.mapper.TransactionUiMapper
 import com.plcoding.spendlesssample.core.presentation.format.AmountInputParser
 import com.plcoding.spendlesssample.transactions.domain.TransactionValidator
@@ -63,6 +73,8 @@ class TransactionListScreenTest {
         dataSource = FakeTransactionLocalDataSource()
         viewModel = TransactionListViewModel(
             observeTransactions = ObserveTransactions(dataSource),
+            observeRunningSeriesIds = ObserveRunningSeriesIds(dataSource),
+            stopRecurringSeries = StopRecurringSeries(dataSource),
             currentDateProvider = FakeCurrentDateProvider(today),
             preferencesSource = FakeAmountFormatPreferencesSource(),
             mapper = TransactionUiMapper(AmountFormatter(), DayHeaderFormatter()),
@@ -73,6 +85,8 @@ class TransactionListScreenTest {
             validator = TransactionValidator(Clock.systemUTC()),
             createTransaction = CreateTransaction(dataSource),
             preferencesSource = FakeAmountFormatPreferencesSource(),
+            currentDateProvider = FakeCurrentDateProvider(today),
+            repeatLabelFormatter = RepeatLabelFormatter(),
             amountInputParser = AmountInputParser(),
             amountFormatter = AmountFormatter(),
             savedStateHandle = SavedStateHandle(),
@@ -86,6 +100,7 @@ class TransactionListScreenTest {
         at: LocalDateTime,
         amountMinor: Long,
         type: TransactionType = TransactionType.EXPENSE,
+        note: String? = null,
     ) = runBlocking {
         dataSource.insert(
             Transaction(
@@ -93,7 +108,7 @@ class TransactionListScreenTest {
                 type = type,
                 counterparty = name,
                 amountMinor = amountMinor,
-                note = null,
+                note = note,
                 category = if (type == TransactionType.EXPENSE) ExpenseCategory.HOME else null,
                 repeat = RepeatFrequency.DOES_NOT_REPEAT,
                 recordedAt = at.toInstant(ZoneOffset.UTC),
@@ -213,4 +228,288 @@ class TransactionListScreenTest {
         composeTestRule.onNodeWithContentDescription(string(R.string.cd_back)).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription(string(R.string.cd_add_transaction)).assertIsDisplayed()
     }
+
+    // region Notes (US3)
+
+    private val lampNote = "Two lamps for the hallway and one for the bedroom, plus spare bulbs."
+
+    @Test
+    fun showNoteRevealsTheFullNoteAndHideNoteHidesItAgain() {
+        seed("Amazon", today.atTime(10, 0), 4_599, note = lampNote)
+        setContent()
+        composeTestRule.onNodeWithText(lampNote).assertDoesNotExist()
+
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(lampNote).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_hide_note)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note)).assertDoesNotExist()
+
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_hide_note)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(lampNote).assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note)).assertIsDisplayed()
+    }
+
+    @Test
+    fun onlyRowsWithANoteHaveABadge() {
+        seed("Amazon", today.atTime(10, 0), 4_599, note = lampNote)
+        seed("Starbucks", today.atTime(9, 0), 750)
+        seed("Rick", today.atTime(8, 0), 2_000, TransactionType.INCOME)
+        setContent()
+
+        composeTestRule.onAllNodesWithContentDescription(string(R.string.cd_show_note)).assertCountEquals(1)
+        // The one badge belongs to the noted row: it sits in Amazon's row, above Starbucks.
+        val badgeTop = composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note))
+            .fetchSemanticsNode().boundsInRoot.top
+        assertThat(badgeTop).isLessThan(top("Starbucks"))
+    }
+
+    @Test
+    fun tappingTheRowOutsideTheBadgeDoesNotExpandIt() {
+        seed("Amazon", today.atTime(10, 0), 4_599, note = lampNote)
+        setContent()
+
+        composeTestRule.onNodeWithText("Amazon").performClick()
+        composeTestRule.onNodeWithText("-$45.99").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(lampNote).assertDoesNotExist()
+        assertThat(viewModel.state.value.expandedIds.isEmpty()).isTrue()
+    }
+
+    @Test
+    fun rowsExpandIndependently() {
+        seed("Amazon", today.atTime(10, 0), 4_599, note = lampNote)
+        seed("Rick", today.atTime(9, 0), 2_000, TransactionType.INCOME, note = "Birthday share")
+        setContent()
+
+        composeTestRule.onAllNodesWithContentDescription(string(R.string.cd_show_note))[0].performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(lampNote).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday share").assertIsDisplayed()
+        composeTestRule.onAllNodesWithContentDescription(string(R.string.cd_hide_note)).assertCountEquals(2)
+    }
+
+    @Test
+    fun expandingKeepsTheNameInPlace() {
+        seed("Amazon", today.atTime(10, 0), 4_599, note = lampNote)
+        setContent()
+        val nameTopBefore = top("Amazon")
+
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note)).performClick()
+        composeTestRule.waitForIdle()
+
+        // The card is drawn outside the row, so the name does not move (US3-1).
+        assertThat(top("Amazon")).isEqualTo(nameTopBefore)
+    }
+
+    @Test
+    fun anExpandedNoteStaysExpandedAfterScrollingAwayAndBack() {
+        seed("Amazon", today.atTime(23, 30), 4_599, note = lampNote)
+        repeat(40) { index -> seed("Older $index", today.minusDays(1).atTime(23, 0).minusMinutes(index.toLong()), 100) }
+        setContent()
+
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_show_note)).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText(lampNote).assertIsDisplayed()
+
+        // Header + 1 row today, header + 40 rows yesterday: index 40 is far off screen.
+        composeTestRule.onNode(hasScrollAction()).performScrollToIndex(40)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText(lampNote).assertDoesNotExist()
+
+        composeTestRule.onNode(hasScrollAction()).performScrollToIndex(0)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText(lampNote).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(string(R.string.cd_hide_note)).assertIsDisplayed()
+    }
+
+    // endregion
+
+    // region Stop repeating (User Story 6, FR-037 – FR-040)
+
+    /** A running daily "Gym" series created yesterday, with today's occurrence. Returns the series id. */
+    private fun seedGymSeries(): Long = runBlocking {
+        val original = Transaction(
+            id = 0,
+            type = TransactionType.EXPENSE,
+            counterparty = "Gym",
+            amountMinor = 4_599,
+            note = null,
+            category = ExpenseCategory.HEALTH_AND_WELLNESS,
+            repeat = RepeatFrequency.DAILY,
+            recordedAt = today.minusDays(1).atTime(9, 0).toInstant(ZoneOffset.UTC),
+            zoneId = ZoneOffset.UTC,
+            seriesId = null,
+            occurrenceDate = null,
+        )
+        val seriesId = (dataSource.insertRecurring(original, RepeatFrequency.DAILY)
+            as com.plcoding.spendlesssample.core.domain.util.Result.Success).data
+        val occurrence = original.copy(
+            repeat = RepeatFrequency.DOES_NOT_REPEAT,
+            recordedAt = today.atTime(9, 0).toInstant(ZoneOffset.UTC),
+            seriesId = seriesId,
+            occurrenceDate = today,
+        )
+        dataSource.materialize(seriesId, listOf(occurrence), lastMaterialized = today)
+        seriesId
+    }
+
+    /** Index 0 is today's occurrence (newest first), index 1 the original under YESTERDAY. */
+    private fun longPressGym(index: Int = 0) {
+        composeTestRule.onAllNodesWithText("Gym")[index].performTouchInput { longClick() }
+        composeTestRule.waitForIdle()
+    }
+
+    private fun stopRepeatingTitle(name: String) =
+        composeTestRule.activity.getString(R.string.stop_repeating_title, name)
+
+    /** A real touch at the centre of [text]'s node, delivered by the system like a finger tap. */
+    private fun tapOnScreenAt(text: String) {
+        val bounds = composeTestRule.onNodeWithText(text).fetchSemanticsNode().boundsInWindow
+        val window = IntArray(2)
+        composeTestRule.activity.window.decorView.getLocationOnScreen(window)
+        val x = (window[0] + bounds.center.x).toInt()
+        val y = (window[1] + bounds.center.y).toInt()
+        CreateTransactionRobot.shell("input tap $x $y")
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun longPressOnARunningSeriesRowShowsStopRepeating() {
+        seedGymSeries()
+        setContent()
+
+        longPressGym()
+
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertIsDisplayed()
+    }
+
+    @Test
+    fun longPressOnTheOriginalAlsoShowsTheMenu() {
+        seedGymSeries()
+        setContent()
+
+        longPressGym(index = 1)
+
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertIsDisplayed()
+    }
+
+    @Test
+    fun longPressOnAOneTimeRowShowsNoMenu() {
+        seed("Netflix", today.atTime(10, 0), 1_599)
+        setContent()
+
+        composeTestRule.onNodeWithText("Netflix").performTouchInput { longClick() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingOutsideTheMenuClosesItAndChangesNothing() {
+        val seriesId = seedGymSeries()
+        setContent()
+        longPressGym()
+
+        tapOnScreenAt(string(R.string.all_transactions))
+
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(stopRepeatingTitle("Gym")).assertDoesNotExist()
+        assertThat(dataSource.storedSeries.single { it.seriesId == seriesId }.stoppedOn).isNull()
+    }
+
+    @Test
+    fun choosingStopRepeatingClosesTheMenuAndAsksToConfirm() {
+        seedGymSeries()
+        setContent()
+        longPressGym()
+
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(stopRepeatingTitle("Gym")).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.stop)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(string(R.string.cancel)).assertIsDisplayed()
+    }
+
+    @Test
+    fun cancelKeepsTheSeriesRunning() {
+        val seriesId = seedGymSeries()
+        setContent()
+        longPressGym()
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).performClick()
+
+        composeTestRule.onNodeWithText(string(R.string.cancel)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(stopRepeatingTitle("Gym")).assertDoesNotExist()
+        assertThat(dataSource.storedSeries.single { it.seriesId == seriesId }.stoppedOn).isNull()
+        longPressGym()
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertIsDisplayed()
+    }
+
+    @Test
+    fun dismissingTheDialogWithBackKeepsTheSeriesRunning() {
+        val seriesId = seedGymSeries()
+        setContent()
+        longPressGym()
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).performClick()
+        composeTestRule.waitForIdle()
+
+        CreateTransactionRobot.shell("input keyevent KEYCODE_BACK")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(stopRepeatingTitle("Gym")).assertDoesNotExist()
+        assertThat(dataSource.storedSeries.single { it.seriesId == seriesId }.stoppedOn).isNull()
+        assertThat(backCalls).isEqualTo(0)
+    }
+
+    @Test
+    fun stopStopsTheSeriesAndKeepsItsRows() {
+        val seriesId = seedGymSeries()
+        setContent()
+        longPressGym()
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).performClick()
+
+        composeTestRule.onNodeWithText(string(R.string.stop)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(stopRepeatingTitle("Gym")).assertDoesNotExist()
+        assertThat(dataSource.storedSeries.single { it.seriesId == seriesId }.stoppedOn).isEqualTo(today)
+        composeTestRule.onAllNodesWithText("Gym").assertCountEquals(2)
+        // A stopped series is no longer long-pressable (FR-037).
+        longPressGym()
+        composeTestRule.onNodeWithText(string(R.string.stop_repeating)).assertDoesNotExist()
+    }
+
+    @Test
+    fun onlyRunningSeriesRowsOfferTheStopRepeatingAccessibilityActionAndItOpensTheMenu() {
+        seedGymSeries()
+        seed("Netflix", today.atTime(10, 0), 1_599)
+        setContent()
+        val label = string(R.string.stop_repeating)
+        val hasStopAction = SemanticsMatcher("offers the $label custom action") { node ->
+            node.config.getOrElseNullable(SemanticsActions.CustomActions) { null }
+                ?.any { it.label == label } == true
+        }
+
+        // The two Gym rows; the one-time Netflix row has no such action.
+        val rows = composeTestRule.onAllNodes(hasStopAction, useUnmergedTree = true)
+        rows.assertCountEquals(2)
+        val action = rows[0].fetchSemanticsNode().config[SemanticsActions.CustomActions].first { it.label == label }
+        composeTestRule.runOnUiThread { action.action() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+    }
+
+    // endregion
 }

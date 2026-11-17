@@ -14,6 +14,7 @@ import com.plcoding.spendlesssample.transactions.presentation.create.CreateTrans
 import com.plcoding.spendlesssample.transactions.presentation.create.CreateTransactionViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -40,10 +41,15 @@ import com.plcoding.spendlesssample.core.presentation.UiText
 import com.plcoding.spendlesssample.transactions.domain.model.ExpenseCategory
 import com.plcoding.spendlesssample.transactions.presentation.R
 import com.plcoding.spendlesssample.transactions.presentation.list.component.DayHeader
+import com.plcoding.spendlesssample.transactions.presentation.list.component.StopRepeatingDialog
+import com.plcoding.spendlesssample.transactions.presentation.list.component.StopRepeatingMenu
 import com.plcoding.spendlesssample.transactions.presentation.list.component.TransactionRow
 import com.plcoding.spendlesssample.transactions.presentation.list.model.DayGroupUi
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import org.koin.androidx.compose.koinViewModel
 
 /** Space between rows, and between a header and its first row (`2417:12043`). */
@@ -176,6 +182,12 @@ fun TransactionListScreen(
     ) { innerPadding ->
         TransactionList(
             groups = state.groups,
+            expandedIds = state.expandedIds,
+            onNoteBadgeClick = { id -> onAction(TransactionListAction.OnNoteBadgeClick(id)) },
+            contextMenuFor = state.contextMenuFor,
+            onRowLongPress = { id -> onAction(TransactionListAction.OnRowLongPress(id)) },
+            onStopRepeatingClick = { onAction(TransactionListAction.OnStopRepeatingClick) },
+            onContextMenuDismiss = { onAction(TransactionListAction.OnContextMenuDismiss) },
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
@@ -191,19 +203,34 @@ fun TransactionListScreen(
     if (state.isCreateSheetOpen) {
         createSheetContent()
     }
+    state.stopConfirmationFor?.let { confirmation ->
+        StopRepeatingDialog(
+            name = confirmation.name,
+            onStopClick = { onAction(TransactionListAction.OnStopConfirm) },
+            onCancel = { onAction(TransactionListAction.OnStopCancel) },
+        )
+    }
 }
 
 /**
- * The grouped list. Each day is a sticky header followed by its rows (FR-008).
+ * The grouped list. Each day is a sticky header followed by its rows (FR-008). Rows of a running
+ * recurring series take a long press, which opens the stop-repeating menu under the row whose id
+ * is [contextMenuFor] (FR-037); other rows ignore it.
  *
  * Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2417-12043
  */
 @Composable
 private fun TransactionList(
     groups: List<DayGroupUi>,
+    expandedIds: ImmutableSet<Long>,
+    onNoteBadgeClick: (Long) -> Unit,
     listState: LazyListState,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    contextMenuFor: Long? = null,
+    onRowLongPress: (Long) -> Unit = {},
+    onStopRepeatingClick: () -> Unit = {},
+    onContextMenuDismiss: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier,
@@ -222,13 +249,28 @@ private fun TransactionList(
                 key = { it.id },
                 contentType = { ContentTypeRow },
             ) { item ->
-                TransactionRow(
-                    item = item,
-                    isExpanded = false,
-                    onNoteBadgeClick = {},
-                    onLongPress = null,
-                    modifier = if (item.id == lastId) Modifier.padding(bottom = GroupBottomPadding) else Modifier,
-                )
+                // The outer box holds the group's bottom padding; the menu anchors to the inner
+                // one, which is exactly the row.
+                Box(modifier = if (item.id == lastId) Modifier.padding(bottom = GroupBottomPadding) else Modifier) {
+                    Box {
+                        TransactionRow(
+                            item = item,
+                            isExpanded = item.id in expandedIds,
+                            onNoteBadgeClick = { onNoteBadgeClick(item.id) },
+                            onLongPress = if (item.isInRunningSeries) {
+                                { onRowLongPress(item.id) }
+                            } else {
+                                null
+                            },
+                        )
+                        if (item.id == contextMenuFor) {
+                            StopRepeatingMenu(
+                                onStopRepeatingClick = onStopRepeatingClick,
+                                onDismiss = onContextMenuDismiss,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -242,11 +284,19 @@ private const val ContentTypeRow = "transaction"
 @Composable
 private fun ScreenPreview(
     groups: List<DayGroupUi> = TransactionListPreviewData.groups,
+    expandedIds: Set<Long> = emptySet(),
     listState: LazyListState = rememberLazyListState(),
+    contextMenuFor: Long? = null,
+    stopConfirmationFor: StopConfirmationUi? = null,
 ) {
     SpendLessTheme {
         TransactionListScreen(
-            state = TransactionListState(groups = groups.toImmutableList()),
+            state = TransactionListState(
+                groups = groups.toImmutableList(),
+                expandedIds = expandedIds.toImmutableSet(),
+                contextMenuFor = contextMenuFor,
+                stopConfirmationFor = stopConfirmationFor,
+            ),
             onAction = {},
             onNavigateBack = {},
             createSheetContent = {},
@@ -262,6 +312,27 @@ private fun TransactionListPopulatedPreview() {
     SpendLessTheme {
         TransactionList(
             groups = TransactionListPreviewData.groups,
+            expandedIds = persistentSetOf(),
+            onNoteBadgeClick = {},
+            listState = rememberLazyListState(),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        )
+    }
+}
+
+/** The TODAY expense and YESTERDAY income notes expanded. */
+@Preview(widthDp = 412, heightDp = 768)
+@Composable
+private fun TransactionListExpandedNotesPreview() {
+    SpendLessTheme {
+        TransactionList(
+            groups = TransactionListPreviewData.groups,
+            expandedIds = persistentSetOf(
+                TransactionListPreviewData.starbucksWithNote.id,
+                TransactionListPreviewData.ricksShareWithNote.id,
+            ),
+            onNoteBadgeClick = {},
             listState = rememberLazyListState(),
             contentPadding = PaddingValues(horizontal = 16.dp),
             modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -275,6 +346,8 @@ private fun TransactionListEmptyPreview() {
     SpendLessTheme {
         TransactionList(
             groups = persistentListOf(),
+            expandedIds = persistentSetOf(),
+            onNoteBadgeClick = {},
             listState = rememberLazyListState(),
             contentPadding = PaddingValues(horizontal = 16.dp),
             modifier = Modifier
@@ -303,6 +376,66 @@ private fun TransactionListScreenPopulatedPreview() {
 @Composable
 private fun TransactionListScreenPinnedHeaderPreview() {
     ScreenPreview(listState = rememberLazyListState(initialFirstVisibleItemIndex = 1))
+}
+
+/**
+ * One expanded expense and one expanded income, between collapsed rows with and without a note.
+ *
+ * Figma: https://www.figma.com/design/xSFwRCFwe13SK2kAq85SLj/SpendLess---Mauro-Team?node-id=2414-5142
+ */
+@Preview(widthDp = 412, heightDp = 892)
+@Composable
+private fun TransactionListScreenExpandedNotesPreview() {
+    val expense = TransactionListPreviewData.starbucksWithNote
+    val income = TransactionListPreviewData.ricksShareWithNote
+    ScreenPreview(
+        groups = listOf(
+            DayGroupUi(
+                dateKey = 2,
+                header = UiText.DynamicString("TODAY"),
+                items = persistentListOf(TransactionListPreviewData.amazon, expense, income),
+            ),
+            DayGroupUi(
+                dateKey = 1,
+                header = UiText.DynamicString("YESTERDAY"),
+                items = persistentListOf(
+                    TransactionListPreviewData.expense(
+                        title = "Netflix",
+                        category = ExpenseCategory.ENTERTAINMENT,
+                        amount = "-$15.99",
+                        note = "Family plan",
+                    ),
+                    TransactionListPreviewData.gym,
+                ),
+            ),
+        ),
+        expandedIds = setOf(expense.id, income.id),
+    )
+}
+
+/**
+ * The stop-repeating menu open under the Gym row. The menu is a popup, which a static preview may
+ * not draw; `StopRepeatingMenu` previews its surface. No Figma node (research R11).
+ */
+@Preview(widthDp = 412, heightDp = 892)
+@Composable
+private fun TransactionListScreenStopMenuOpenPreview() {
+    ScreenPreview(contextMenuFor = TransactionListPreviewData.gym.id)
+}
+
+/**
+ * The confirmation dialog over the list. A dialog is a separate window, which a static preview may
+ * not draw; `StopRepeatingDialog` previews it. No Figma node (research R11).
+ */
+@Preview(widthDp = 412, heightDp = 892)
+@Composable
+private fun TransactionListScreenStopDialogPreview() {
+    ScreenPreview(
+        stopConfirmationFor = StopConfirmationUi(
+            seriesId = TransactionListPreviewData.gym.id,
+            name = TransactionListPreviewData.gym.title,
+        ),
+    )
 }
 
 @Preview(widthDp = 412, heightDp = 892)

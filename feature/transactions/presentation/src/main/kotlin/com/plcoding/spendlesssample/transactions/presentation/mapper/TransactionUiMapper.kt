@@ -18,7 +18,11 @@ class TransactionUiMapper(
     private val dayHeaderFormatter: DayHeaderFormatter,
 ) {
 
-    fun toUi(transaction: Transaction, prefs: AmountFormatPreferences): TransactionUi {
+    fun toUi(
+        transaction: Transaction,
+        prefs: AmountFormatPreferences,
+        runningSeriesIds: Set<Long> = emptySet(),
+    ): TransactionUi {
         val isExpense = transaction.type == TransactionType.EXPENSE
         // An expense always has a category (data-model §1); OTHER is the defensive fallback.
         val category = transaction.category ?: ExpenseCategory.Default
@@ -31,8 +35,8 @@ class TransactionUiMapper(
             formattedAmount = amountFormatter.format(transaction.amountMinor, isNegative = isExpense, prefs = prefs),
             note = transaction.note,
             seriesId = transaction.seriesId,
-            // Running-series state is wired by the stop-repeating story (US6).
-            isInRunningSeries = false,
+            // The original and every occurrence carry the series id (FR-037).
+            isInRunningSeries = transaction.seriesId?.let { it in runningSeriesIds } ?: false,
         )
     }
 
@@ -44,6 +48,7 @@ class TransactionUiMapper(
         transactions: List<Transaction>,
         today: LocalDate,
         prefs: AmountFormatPreferences,
+        runningSeriesIds: Set<Long> = emptySet(),
     ): ImmutableList<DayGroupUi> = transactions
         .sortedByDescending { it.recordedAt }
         .groupBy { it.recordedAt.atZone(it.zoneId).toLocalDate() }
@@ -52,7 +57,7 @@ class TransactionUiMapper(
             DayGroupUi(
                 dateKey = date.toEpochDay(),
                 header = dayHeaderFormatter.format(date, today),
-                items = dayTransactions.map { toUi(it, prefs) }.toImmutableList(),
+                items = dayTransactions.map { toUi(it, prefs, runningSeriesIds) }.toImmutableList(),
             )
         }
         .toImmutableList()

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plcoding.spendlesssample.core.domain.format.AmountFormatPreferences
 import com.plcoding.spendlesssample.core.domain.format.AmountFormatPreferencesSource
+import com.plcoding.spendlesssample.core.domain.time.CurrentDateProvider
 import com.plcoding.spendlesssample.core.domain.util.Result
 import com.plcoding.spendlesssample.core.domain.util.onFailure
 import com.plcoding.spendlesssample.core.domain.util.onSuccess
@@ -17,6 +18,7 @@ import com.plcoding.spendlesssample.transactions.domain.model.RepeatFrequency
 import com.plcoding.spendlesssample.transactions.domain.model.TransactionDraft
 import com.plcoding.spendlesssample.transactions.domain.model.TransactionType
 import com.plcoding.spendlesssample.transactions.domain.usecase.CreateTransaction
+import com.plcoding.spendlesssample.transactions.presentation.format.RepeatLabelFormatter
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +36,8 @@ class CreateTransactionViewModel(
     private val validator: TransactionValidator,
     private val createTransaction: CreateTransaction,
     preferencesSource: AmountFormatPreferencesSource,
+    currentDateProvider: CurrentDateProvider,
+    private val repeatLabelFormatter: RepeatLabelFormatter,
     private val amountInputParser: AmountInputParser,
     private val amountFormatter: AmountFormatter,
     private val savedStateHandle: SavedStateHandle,
@@ -57,10 +61,20 @@ class CreateTransactionViewModel(
                 _state.update { it.withDerivedFields() }
             }
         }
+        // The long labels name today's weekday and date, and follow a date change (FR-019).
+        viewModelScope.launch {
+            currentDateProvider.today.collect { today ->
+                _state.update { it.copy(repeatOptions = repeatLabelFormatter.options(today)) }
+            }
+        }
     }
 
     fun onAction(action: CreateTransactionAction) {
         when (action) {
+            // The category stays in state while Income (it is hidden, not cleared) so it comes back
+            // on switching to Expense; every other field is kept too (FR-024).
+            is CreateTransactionAction.OnTypeSelect ->
+                updateForm { it.copy(type = action.type, openSelect = null) }
             is CreateTransactionAction.OnNameChange -> {
                 if (action.text.length > TransactionValidator.MAX_NAME_LENGTH) return
                 updateForm { it.copy(name = action.text) }
@@ -88,13 +102,12 @@ class CreateTransactionViewModel(
             is CreateTransactionAction.OnCategoryPick ->
                 updateForm { it.copy(category = action.category, openSelect = null) }
             CreateTransactionAction.OnSelectDismiss -> _state.update { it.copy(openSelect = null) }
+            CreateTransactionAction.OnRepeatSelectClick ->
+                _state.update { it.copy(openSelect = OpenSelect.REPEAT) }
+            is CreateTransactionAction.OnRepeatPick ->
+                updateForm { it.copy(repeat = action.frequency, openSelect = null) }
             CreateTransactionAction.OnCreateClick -> create()
             CreateTransactionAction.OnCloseClick -> resetForm()
-            // Switching type is User Story 4 (T102); the repeat field is User Story 5 (T114).
-            is CreateTransactionAction.OnTypeSelect,
-            CreateTransactionAction.OnRepeatSelectClick,
-            is CreateTransactionAction.OnRepeatPick,
-            -> Unit
         }
     }
 
@@ -138,9 +151,10 @@ class CreateTransactionViewModel(
         save(_state.value)
     }
 
+    /** Clears the form; the repeat options depend on today, not on the form, so they are kept. */
     private fun resetForm() {
         SAVED_KEYS.forEach { savedStateHandle.remove<Any>(it) }
-        _state.value = CreateTransactionState().withDerivedFields()
+        _state.update { CreateTransactionState(repeatOptions = it.repeatOptions).withDerivedFields() }
     }
 
     private fun save(state: CreateTransactionState) {
@@ -180,6 +194,7 @@ class CreateTransactionViewModel(
                 isPlaceholder = amountInput.isEmpty(),
                 signTone = type,
             ),
+            repeatFieldLabel = repeatLabelFormatter.shortLabel(repeat),
             isCreateEnabled = name.isNotBlank() && amountMinor != null,
         )
     }

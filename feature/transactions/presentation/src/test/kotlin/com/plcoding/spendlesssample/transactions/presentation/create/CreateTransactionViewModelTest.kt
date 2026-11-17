@@ -11,6 +11,9 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.plcoding.spendlesssample.core.domain.fake.FakeAmountFormatPreferencesSource
+import com.plcoding.spendlesssample.core.domain.fake.FakeCurrentDateProvider
+import com.plcoding.spendlesssample.core.domain.format.AmountFormatPreferences
+import com.plcoding.spendlesssample.core.domain.format.NegativeStyle
 import com.plcoding.spendlesssample.core.domain.util.DataError
 import com.plcoding.spendlesssample.core.domain.util.Result
 import com.plcoding.spendlesssample.core.presentation.R as CoreR
@@ -25,8 +28,11 @@ import com.plcoding.spendlesssample.transactions.domain.model.RepeatFrequency
 import com.plcoding.spendlesssample.transactions.domain.model.Transaction
 import com.plcoding.spendlesssample.transactions.domain.model.TransactionType
 import com.plcoding.spendlesssample.transactions.domain.usecase.CreateTransaction
+import com.plcoding.spendlesssample.transactions.presentation.R
+import com.plcoding.spendlesssample.transactions.presentation.format.RepeatLabelFormatter
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +53,9 @@ class CreateTransactionViewModelTest {
     private val preferences = FakeAmountFormatPreferencesSource()
     private val savedStateHandle = SavedStateHandle()
 
+    /** Thursday, the local date of [now]. */
+    private val dateProvider = FakeCurrentDateProvider(LocalDate.of(2026, 1, 15))
+
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -64,6 +73,8 @@ class CreateTransactionViewModelTest {
         validator = TransactionValidator(Clock.fixed(now, ZoneOffset.UTC)),
         createTransaction = createTransaction,
         preferencesSource = preferences,
+        currentDateProvider = dateProvider,
+        repeatLabelFormatter = RepeatLabelFormatter(),
         amountInputParser = AmountInputParser(),
         amountFormatter = AmountFormatter(),
         savedStateHandle = handle,
@@ -507,7 +518,436 @@ class CreateTransactionViewModelTest {
 
     // endregion
 
+    // region Type (User Story 4, FR-011, FR-024)
+
+    @Test
+    fun `switching to Income shows the $ 00_00 placeholder in the income tone`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+
+        assertThat(vm.state.value.type).isEqualTo(TransactionType.INCOME)
+        assertThat(vm.state.value.amountParts).isEqualTo(
+            AmountPartsUi(
+                prefix = "$",
+                number = "00.00",
+                suffix = "",
+                isPlaceholder = true,
+                signTone = TransactionType.INCOME,
+            ),
+        )
+    }
+
+    @Test
+    fun `typed income amount is grouped behind the $ prefix`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        vm.onAction(CreateTransactionAction.OnAmountChange("1234.5"))
+
+        assertThat(vm.state.value.amountParts).isEqualTo(
+            AmountPartsUi(
+                prefix = "$",
+                number = "1,234.5",
+                suffix = "",
+                isPlaceholder = false,
+                signTone = TransactionType.INCOME,
+            ),
+        )
+    }
+
+    @Test
+    fun `switching back to Expense restores the -$ prefix and expense tone`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.EXPENSE))
+
+        assertThat(vm.state.value.type).isEqualTo(TransactionType.EXPENSE)
+        assertThat(vm.state.value.amountParts.prefix).isEqualTo("-$")
+        assertThat(vm.state.value.amountParts.signTone).isEqualTo(TransactionType.EXPENSE)
+    }
+
+    @Test
+    fun `name, amount, note and repeat are kept across Expense to Income and back`() {
+        val vm = viewModel()
+        vm.fill(name = "Rick", amount = "20")
+        vm.onAction(CreateTransactionAction.OnAddNoteClick)
+        vm.onAction(CreateTransactionAction.OnNoteChange("Maggy's birthday"))
+        val before = vm.state.value
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        val income = vm.state.value
+        assertThat(income.name).isEqualTo("Rick")
+        assertThat(income.amountInput).isEqualTo("20")
+        assertThat(income.note).isEqualTo("Maggy's birthday")
+        assertThat(income.isNoteEditing).isTrue()
+        assertThat(income.repeat).isEqualTo(before.repeat)
+        assertThat(income.isCreateEnabled).isTrue()
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.EXPENSE))
+        assertThat(vm.state.value).isEqualTo(before)
+    }
+
+    @Test
+    fun `the chosen expense category is kept while Income and restored on switching back`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnCategoryPick(ExpenseCategory.HOME))
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        assertThat(vm.state.value.category).isEqualTo(ExpenseCategory.HOME)
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.EXPENSE))
+        assertThat(vm.state.value.category).isEqualTo(ExpenseCategory.HOME)
+    }
+
+    @Test
+    fun `switching type closes an open category list`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnCategorySelectClick)
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        assertThat(vm.state.value.openSelect).isNull()
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.EXPENSE))
+        assertThat(vm.state.value.openSelect).isNull()
+    }
+
+    @Test
+    fun `selecting the current type again changes nothing`() {
+        val vm = viewModel()
+        vm.fill()
+        val before = vm.state.value
+
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.EXPENSE))
+
+        assertThat(vm.state.value).isEqualTo(before)
+    }
+
+    @Test
+    fun `creating an income stores it without a category even when one was picked as expense`() = runTest {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnCategoryPick(ExpenseCategory.HOME))
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        vm.fill(name = " Rick ", amount = "20")
+
+        vm.events.test {
+            vm.onAction(CreateTransactionAction.OnCreateClick)
+            assertThat(awaitItem()).isEqualTo(CreateTransactionEvent.Created)
+        }
+
+        assertThat(dataSource.storedTransactions).containsExactly(
+            Transaction(
+                id = 1,
+                type = TransactionType.INCOME,
+                counterparty = "Rick",
+                amountMinor = 2_000,
+                note = null,
+                category = null,
+                repeat = RepeatFrequency.DOES_NOT_REPEAT,
+                recordedAt = now,
+                zoneId = ZoneOffset.UTC,
+                seriesId = null,
+                occurrenceDate = null,
+            ),
+        )
+    }
+
+    @Test
+    fun `after an income is created the form resets to Expense`() = runTest {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        vm.fill(name = "Rick", amount = "20")
+        vm.onAction(CreateTransactionAction.OnCreateClick)
+
+        assertThat(vm.state.value).isEqualTo(viewModel(SavedStateHandle()).state.value)
+        assertThat(vm.state.value.type).isEqualTo(TransactionType.EXPENSE)
+    }
+
+    @Test
+    fun `Close after switching to Income resets the form to Expense`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        vm.onAction(CreateTransactionAction.OnCloseClick)
+
+        assertThat(vm.state.value.type).isEqualTo(TransactionType.EXPENSE)
+        assertThat(viewModel(savedStateHandle).state.value.type).isEqualTo(TransactionType.EXPENSE)
+    }
+
+    // endregion
+
+    // region Repeat (User Story 5, FR-019, FR-020)
+
+    private fun resource(id: Int, vararg args: Any) = UiText.StringResource(id, arrayOf(*args))
+
+    @Test
+    fun `repeat options are built from today's date`() {
+        val options = viewModel().state.value.repeatOptions
+
+        assertThat(options.map { it.frequency }).containsExactly(*RepeatFrequency.entries.toTypedArray())
+        assertThat(options.map { it.label }).containsExactly(
+            resource(R.string.repeat_does_not_repeat),
+            resource(R.string.repeat_daily),
+            resource(R.string.repeat_weekly_on, "Thursday"),
+            resource(R.string.repeat_monthly_on_the, "15th"),
+            resource(R.string.repeat_yearly_on, "Jan 15th"),
+        )
+    }
+
+    @Test
+    fun `repeat options follow a date change while the sheet is open`() {
+        val vm = viewModel()
+
+        dateProvider.current.value = LocalDate.of(2026, 1, 16)
+
+        assertThat(vm.state.value.repeatOptions.map { it.label }).containsExactly(
+            resource(R.string.repeat_does_not_repeat),
+            resource(R.string.repeat_daily),
+            resource(R.string.repeat_weekly_on, "Friday"),
+            resource(R.string.repeat_monthly_on_the, "16th"),
+            resource(R.string.repeat_yearly_on, "Jan 16th"),
+        )
+    }
+
+    @Test
+    fun `the repeat field shows Does not repeat by default`() {
+        assertThat(viewModel().state.value.repeatFieldLabel).isEqualTo(resource(R.string.repeat_does_not_repeat))
+    }
+
+    @Test
+    fun `OnRepeatSelectClick opens the repeat list`() {
+        val vm = viewModel()
+
+        vm.onAction(CreateTransactionAction.OnRepeatSelectClick)
+
+        assertThat(vm.state.value.openSelect).isEqualTo(OpenSelect.REPEAT)
+    }
+
+    @Test
+    fun `OnRepeatSelectClick while the category list is open switches to the repeat list`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnCategorySelectClick)
+
+        vm.onAction(CreateTransactionAction.OnRepeatSelectClick)
+
+        assertThat(vm.state.value.openSelect).isEqualTo(OpenSelect.REPEAT)
+    }
+
+    @Test
+    fun `OnRepeatPick sets the repeat, closes the list and the field shows the short label`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnRepeatSelectClick)
+
+        vm.onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.WEEKLY))
+
+        val state = vm.state.value
+        assertThat(state.repeat).isEqualTo(RepeatFrequency.WEEKLY)
+        assertThat(state.openSelect).isNull()
+        assertThat(state.repeatFieldLabel).isEqualTo(resource(R.string.repeat_weekly))
+    }
+
+    @Test
+    fun `each repeat pick shows its short label`() {
+        val vm = viewModel()
+        val expected = mapOf(
+            RepeatFrequency.DOES_NOT_REPEAT to R.string.repeat_does_not_repeat,
+            RepeatFrequency.DAILY to R.string.repeat_daily,
+            RepeatFrequency.WEEKLY to R.string.repeat_weekly,
+            RepeatFrequency.MONTHLY to R.string.repeat_monthly,
+            RepeatFrequency.YEARLY to R.string.repeat_yearly,
+        )
+
+        expected.forEach { (frequency, id) ->
+            vm.onAction(CreateTransactionAction.OnRepeatPick(frequency))
+            assertThat(vm.state.value.repeatFieldLabel).isEqualTo(resource(id))
+        }
+    }
+
+    @Test
+    fun `the repeat does not change Create enabled`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.DAILY))
+        assertThat(vm.state.value.isCreateEnabled).isFalse()
+
+        vm.fill()
+        assertThat(vm.state.value.isCreateEnabled).isTrue()
+    }
+
+    @Test
+    fun `OnSelectDismiss closes the repeat list without changing the repeat`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.MONTHLY))
+        vm.onAction(CreateTransactionAction.OnRepeatSelectClick)
+
+        vm.onAction(CreateTransactionAction.OnSelectDismiss)
+
+        assertThat(vm.state.value.openSelect).isNull()
+        assertThat(vm.state.value.repeat).isEqualTo(RepeatFrequency.MONTHLY)
+    }
+
+    @Test
+    fun `the created transaction carries the chosen repeat and starts a series`() = runTest {
+        val vm = viewModel()
+        vm.fill(name = "Gym", amount = "45.99")
+        vm.onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.MONTHLY))
+
+        vm.events.test {
+            vm.onAction(CreateTransactionAction.OnCreateClick)
+            assertThat(awaitItem()).isEqualTo(CreateTransactionEvent.Created)
+        }
+
+        assertThat(dataSource.storedTransactions.map { it.repeat to it.seriesId })
+            .containsExactly(RepeatFrequency.MONTHLY to 1L)
+        assertThat(dataSource.storedSeries.map { it.frequency }).containsExactly(RepeatFrequency.MONTHLY)
+    }
+
+    @Test
+    fun `the repeat resets to Does not repeat after Create and after Close`() = runTest {
+        val vm = viewModel()
+        vm.fill()
+        vm.onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.YEARLY))
+        vm.onAction(CreateTransactionAction.OnCreateClick)
+        assertThat(vm.state.value.repeat).isEqualTo(RepeatFrequency.DOES_NOT_REPEAT)
+
+        vm.onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.DAILY))
+        vm.onAction(CreateTransactionAction.OnCloseClick)
+        assertThat(vm.state.value.repeat).isEqualTo(RepeatFrequency.DOES_NOT_REPEAT)
+        assertThat(vm.state.value.repeatFieldLabel).isEqualTo(resource(R.string.repeat_does_not_repeat))
+    }
+
+    @Test
+    fun `the repeat survives a new ViewModel built from the same SavedStateHandle`() {
+        viewModel().onAction(CreateTransactionAction.OnRepeatPick(RepeatFrequency.WEEKLY))
+
+        val restored = viewModel(savedStateHandle).state.value
+
+        assertThat(restored.repeat).isEqualTo(RepeatFrequency.WEEKLY)
+        assertThat(restored.repeatFieldLabel).isEqualTo(resource(R.string.repeat_weekly))
+    }
+
+    // endregion
+
+    // region Amount format preferences (User Story 7, FR-014, FR-032 – FR-035)
+
+    @Test
+    fun `parentheses style wraps the empty expense placeholder from the first state`() {
+        preferences.current.value = Parentheses
+
+        assertThat(viewModel().state.value.amountParts).isEqualTo(
+            AmountPartsUi(
+                prefix = "($",
+                number = "00.00",
+                suffix = ")",
+                isPlaceholder = true,
+                signTone = TransactionType.EXPENSE,
+            ),
+        )
+    }
+
+    @Test
+    fun `parentheses style keeps the suffix around typed digits and drops it for income`() {
+        preferences.current.value = Parentheses
+        val viewModel = viewModel()
+
+        viewModel.typeAmount("1234.5")
+        assertThat(viewModel.state.value.amountParts).isEqualTo(
+            AmountPartsUi(prefix = "($", number = "1,234.5", suffix = ")", isPlaceholder = false),
+        )
+
+        viewModel.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+        val income = viewModel.state.value.amountParts
+        assertThat(income.prefix).isEqualTo("$")
+        assertThat(income.suffix).isEqualTo("")
+    }
+
+    @Test
+    fun `comma decimal shows the 00,00 placeholder from the first state`() {
+        preferences.current.value = CommaDecimal
+
+        val parts = viewModel().state.value.amountParts
+        assertThat(parts.number).isEqualTo("00,00")
+        assertThat(parts.prefix).isEqualTo("-$")
+        assertThat(parts.isPlaceholder).isTrue()
+    }
+
+    @Test
+    fun `comma decimal accepts a comma, rejects a dot and groups with dots`() {
+        preferences.current.value = CommaDecimal
+        val viewModel = viewModel()
+
+        viewModel.typeAmount("1234")
+        viewModel.onAction(CreateTransactionAction.OnAmountChange("1234."))
+        assertThat(viewModel.state.value.amountInput).isEqualTo("1234")
+
+        viewModel.typeAmount(",5")
+        assertThat(viewModel.state.value.amountInput).isEqualTo("1234,5")
+        assertThat(viewModel.state.value.amountParts.number).isEqualTo("1.234,5")
+    }
+
+    @Test
+    fun `comma decimal amount enables Create and is stored in minor units`() = runTest {
+        preferences.current.value = CommaDecimal
+        val viewModel = viewModel()
+
+        viewModel.fill(name = "Netflix", amount = "15,99")
+        assertThat(viewModel.state.value.isCreateEnabled).isTrue()
+        viewModel.onAction(CreateTransactionAction.OnCreateClick)
+
+        assertThat(dataSource.storedTransactions.single().amountMinor).isEqualTo(1_599L)
+    }
+
+    @Test
+    fun `a dot typed under comma decimal never enables Create`() {
+        preferences.current.value = CommaDecimal
+        val viewModel = viewModel()
+
+        viewModel.fill(name = "Netflix", amount = "15.99")
+
+        assertThat(viewModel.state.value.amountInput).isEqualTo("")
+        assertThat(viewModel.state.value.isCreateEnabled).isFalse()
+    }
+
+    @Test
+    fun `space thousands and a custom symbol group the typed amount`() {
+        preferences.current.value = AmountFormatPreferences.Default.copy(currencySymbol = "€", thousandsSeparator = ' ')
+        val viewModel = viewModel()
+        viewModel.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+
+        viewModel.typeAmount("12000.00")
+
+        val parts = viewModel.state.value.amountParts
+        assertThat(parts.prefix).isEqualTo("€")
+        assertThat(parts.number).isEqualTo("12 000.00")
+    }
+
+    @Test
+    fun `a preference change while the sheet is open restyles the amount`() {
+        val viewModel = viewModel()
+        assertThat(viewModel.state.value.amountParts.prefix).isEqualTo("-$")
+
+        preferences.current.value = Parentheses.copy(decimalSeparator = ',', thousandsSeparator = '.')
+
+        val parts = viewModel.state.value.amountParts
+        assertThat(parts.prefix).isEqualTo("($")
+        assertThat(parts.number).isEqualTo("00,00")
+        assertThat(parts.suffix).isEqualTo(")")
+    }
+
+    // endregion
+
     // region Process death
+
+    @Test
+    fun `Income survives a new ViewModel built from the same SavedStateHandle and the category comes back`() {
+        val vm = viewModel()
+        vm.onAction(CreateTransactionAction.OnCategoryPick(ExpenseCategory.HOME))
+        vm.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.INCOME))
+
+        val restored = viewModel(savedStateHandle)
+        assertThat(restored.state.value.type).isEqualTo(TransactionType.INCOME)
+        assertThat(restored.state.value.amountParts.prefix).isEqualTo("$")
+        assertThat(restored.state.value.amountParts.signTone).isEqualTo(TransactionType.INCOME)
+
+        restored.onAction(CreateTransactionAction.OnTypeSelect(TransactionType.EXPENSE))
+        assertThat(restored.state.value.category).isEqualTo(ExpenseCategory.HOME)
+    }
 
     @Test
     fun `form fields survive a new ViewModel built from the same SavedStateHandle`() {
@@ -550,5 +990,10 @@ class CreateTransactionViewModelTest {
             gate.await()
             return delegate.insert(transaction)
         }
+    }
+
+    private companion object {
+        val Parentheses = AmountFormatPreferences.Default.copy(negativeStyle = NegativeStyle.PARENTHESES)
+        val CommaDecimal = AmountFormatPreferences.Default.copy(decimalSeparator = ',', thousandsSeparator = '.')
     }
 }
